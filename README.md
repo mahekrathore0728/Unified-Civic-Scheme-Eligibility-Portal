@@ -14,8 +14,9 @@ Citizens frequently struggle to discover and evaluate welfare benefits due to fr
 
 ---
 
-## 2. Features (Phase 1 Core)
+## 2. Features
 
+### Part 1: Core Scheme Discovery & Eligibility
 - **Civic Home Portal**: Clean hero interface with quick keyword search, service pillars, and live featured schemes dynamically retrieved from MySQL.
 - **Schemes Directory**:
   - Full-text search across scheme titles, objectives, and benefits.
@@ -32,9 +33,15 @@ Citizens frequently struggle to discover and evaluate welfare benefits due to fr
   - Evaluates rules deterministically against MySQL database records using parameterized queries.
   - Categorizes results into **Qualifying Schemes** (with criteria match reasons) and **Criteria Not Matched** (with exact unmet conditions).
   - Interactive preset personas (Farmer, SC Student, Senior Citizen, Street Vendor) for rapid professor viva demonstration.
-- **Modern Civic-Tech UI**:
-  - Professional color palette: Navy Blue (`#0A2E50`), Government Blue (`#1565C0`), Saffron Accent (`#F37021`), Indian Green (`#138808`).
-  - Accessible form validation and responsive layout across mobile, tablet, and desktop.
+  - **Autofill from My Profile**: Logged-in citizens can instantly populate the eligibility checker using their saved profile data.
+
+### Part 2: Authentication & Citizen Profile
+- **Citizen Registration (Signup)**: Full Name, Email, Password, and Password Confirmation with validation, duplicate detection, and secure password hashing using Werkzeug.
+- **Citizen Login**: Email and password authentication against MySQL database returning secure session tokens.
+- **User Roles**: Supported `USER` (default for registered citizens) and `ADMIN`.
+- **Citizen Profile**: View and update full demographic, economic, and beneficiary attributes (Age, Gender, Domicile State, Annual Income, Occupation, Social Category, Student/Farmer/Disability flags).
+- **Protected Routes**: Secure navigation ensuring the Profile page is accessible exclusively by authenticated citizens.
+- **Session State & Logout**: Stateless token verification with auto-login, header-based Bearer authentication, and clean logout handling.
 
 ---
 
@@ -221,13 +228,18 @@ The React frontend will be available at `http://localhost:5173`.
 
 ## 11. API Overview
 
-| HTTP Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/` | API status and health check |
-| `GET` | `/api/schemes` | List schemes with search (`?q=`), category (`?category=`), state (`?state=`), and jurisdiction (`?scope=`) |
-| `GET` | `/api/schemes/<id>` | Full profile of a specific scheme |
-| `GET` | `/api/schemes/categories` | Distinct categories list with count of schemes |
-| `POST` | `/api/eligibility/check` | Rule engine evaluating citizen criteria against MySQL schemes |
+| HTTP Method | Endpoint | Purpose | Authorization |
+|---|---|---|---|
+| `GET` | `/` | API status and health check | Public |
+| `GET` | `/api/schemes` | List schemes with search (`?q=`), category (`?category=`), state (`?state=`), and jurisdiction (`?scope=`) | Public |
+| `GET` | `/api/schemes/<id>` | Full profile of a specific scheme | Public |
+| `GET` | `/api/schemes/categories` | Distinct categories list with count of schemes | Public |
+| `POST` | `/api/eligibility/check` | Rule engine evaluating citizen criteria against MySQL schemes | Public |
+| `POST` | `/api/auth/register` | Register new user account with hashed password | Public |
+| `POST` | `/api/auth/login` | Authenticate user credentials and return session token | Public |
+| `POST` | `/api/auth/logout` | Client logout confirmation | Public |
+| `GET` | `/api/profile` | Retrieve authenticated citizen's demographic & socioeconomic profile | `Bearer <token>` |
+| `PUT` | `/api/profile` | Update authenticated citizen's demographic & socioeconomic profile | `Bearer <token>` |
 
 ---
 

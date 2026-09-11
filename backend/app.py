@@ -1,12 +1,22 @@
 import os
+import re
+import time
+import json
+import hmac
+import hashlib
+import base64
+from functools import wraps
 from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
 from database import query_all, query_one, execute_db
 
 env_path = Path(__file__).resolve().parent / '.env'
 load_dotenv(dotenv_path=env_path)
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'civic-scheme-portal-secret-key-2026')
 
 app = Flask(__name__)
 # Enable CORS for frontend communication
@@ -20,6 +30,58 @@ def api_response(success, message, data=None, status_code=200):
         "data": data if data is not None else {}
     }
     return jsonify(payload), status_code
+
+def generate_token(user_id, email, role):
+    """Generate a tamper-evident HMAC-signed session token (valid for 7 days)."""
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "role": role,
+        "exp": int(time.time()) + (7 * 24 * 3600)
+    }
+    payload_bytes = json.dumps(payload, separators=(',', ':')).encode('utf-8')
+    payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode('utf-8').rstrip('=')
+    signature = hmac.new(SECRET_KEY.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
+    return f"{payload_b64}.{signature}"
+
+def decode_token(token):
+    """Verify signature and return token payload if valid and unexpired."""
+    if not token or '.' not in token:
+        return None
+    try:
+        parts = token.split('.', 1)
+        if len(parts) != 2:
+            return None
+        payload_b64, signature = parts
+        expected_sig = hmac.new(SECRET_KEY.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected_sig):
+            return None
+        # Add back padding if needed
+        padding = '=' * (-len(payload_b64) % 4)
+        payload_bytes = base64.urlsafe_b64decode((payload_b64 + padding).encode('utf-8'))
+        payload = json.loads(payload_bytes.decode('utf-8'))
+        if payload.get("exp", 0) < time.time():
+            return None
+        return payload
+    except Exception:
+        return None
+
+def token_required(f):
+    """Decorator to enforce and authenticate user session via Authorization Bearer header."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header:
+            return api_response(False, "Authentication token is missing. Please log in.", None, 401)
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return api_response(False, "Invalid Authorization header format. Expected 'Bearer <token>'.", None, 401)
+        token = parts[1]
+        user_data = decode_token(token)
+        if not user_data:
+            return api_response(False, "Invalid or expired session token. Please log in again.", None, 401)
+        return f(current_user=user_data, *args, **kwargs)
+    return decorated
 
 @app.errorhandler(404)
 def not_found_handler(e):
@@ -306,16 +368,295 @@ def check_eligibility():
         return api_response(False, "Failed to process eligibility evaluation.", None, 500)
 
 # ==========================================
-# Future Phases Modular Stubs
+# Authentication Endpoints (Part 2)
 # ==========================================
 
-@app.route("/api/auth/<action>", methods=["POST"])
-def auth_placeholder(action):
-    """Modular placeholder for Phase 2 authentication."""
-    return api_response(True, f"Authentication action '{action}' is configured for Phase 2.", {
-        "phase": 2,
-        "feature": "User Authentication & Session Management"
-    })
+EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    """
+    Register a new user account.
+    Expects JSON: { full_name, email, password, confirm_password }
+    """
+    try:
+        data = request.get_json() or {}
+        full_name = data.get("full_name", "").strip()
+        email = data.get("email", "").strip().lower()
+        password = data.get("password", "")
+        confirm_password = data.get("confirm_password", "")
+
+        # 1. Required fields validation
+        if not full_name:
+            return api_response(False, "Full name is required.", None, 400)
+        if not email:
+            return api_response(False, "Email address is required.", None, 400)
+        if not password:
+            return api_response(False, "Password is required.", None, 400)
+        if not confirm_password:
+            return api_response(False, "Please confirm your password.", None, 400)
+
+        # 2. Email format validation
+        if not re.match(EMAIL_REGEX, email):
+            return api_response(False, "Please enter a valid email address.", None, 400)
+
+        # 3. Password matching and strength validation
+        if password != confirm_password:
+            return api_response(False, "Password and confirm password do not match.", None, 400)
+        if len(password) < 6:
+            return api_response(False, "Password must be at least 6 characters long.", None, 400)
+
+        # 4. Check for duplicate email (parameterized query)
+        existing_user = query_one("SELECT id FROM users WHERE email = %s", (email,))
+        if existing_user:
+            return api_response(False, "An account with this email address already exists. Please login.", None, 409)
+
+        # 5. Hash password with Werkzeug (never store plaintext)
+        pwd_hash = generate_password_hash(password)
+
+        # 6. Insert new user with default role 'USER'
+        user_id = execute_db(
+            "INSERT INTO users (full_name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
+            (full_name, email, pwd_hash, "USER")
+        )
+
+        # 7. Create default profile row linked to this user
+        execute_db("INSERT INTO profiles (user_id) VALUES (%s)", (user_id,))
+
+        # 8. Generate session token
+        token = generate_token(user_id, email, "USER")
+
+        user_info = {
+            "id": user_id,
+            "full_name": full_name,
+            "email": email,
+            "role": "USER"
+        }
+
+        return api_response(True, "Registration successful. Welcome to Unified Civic Portal!", {
+            "token": token,
+            "user": user_info
+        }, 201)
+
+    except Exception as err:
+        print(f"[API Error /api/auth/register]: {err}")
+        return api_response(False, "An unexpected error occurred during registration. Please try again.", None, 500)
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    """
+    Authenticate an existing user.
+    Expects JSON: { email, password }
+    """
+    try:
+        data = request.get_json() or {}
+        email = data.get("email", "").strip().lower()
+        password = data.get("password", "")
+
+        if not email or not password:
+            return api_response(False, "Please provide both email address and password.", None, 400)
+
+        # Query user from MySQL with parameterized query
+        user = query_one(
+            "SELECT id, full_name, email, password_hash, role FROM users WHERE email = %s",
+            (email,)
+        )
+
+        if not user or not check_password_hash(user["password_hash"], password):
+            return api_response(False, "Invalid email or password. Please check your credentials.", None, 401)
+
+        role = user.get("role") or "USER"
+        token = generate_token(user["id"], user["email"], role)
+
+        user_info = {
+            "id": user["id"],
+            "full_name": user["full_name"],
+            "email": user["email"],
+            "role": role
+        }
+
+        return api_response(True, "Login successful.", {
+            "token": token,
+            "user": user_info
+        }, 200)
+
+    except Exception as err:
+        print(f"[API Error /api/auth/login]: {err}")
+        return api_response(False, "An error occurred during login. Please try again later.", None, 500)
+
+@app.route("/api/auth/logout", methods=["POST"])
+def logout():
+    """
+    Logout user endpoint (stateless token clearance confirmation).
+    """
+    return api_response(True, "Logged out successfully.", None, 200)
+
+# ==========================================
+# User Profile Endpoints (Part 2)
+# ==========================================
+
+@app.route("/api/profile", methods=["GET"])
+@token_required
+def get_profile(current_user):
+    """
+    Retrieve logged-in citizen's complete profile.
+    Requires Bearer token authorization.
+    """
+    try:
+        user_id = current_user["user_id"]
+
+        sql = """
+            SELECT u.id AS user_id, u.full_name, u.email, u.role,
+                   p.id AS profile_id, p.age, p.gender, p.state, p.annual_income,
+                   p.occupation, p.category, p.student_status, p.farmer_status,
+                   p.disability_status, p.updated_at
+            FROM users u
+            LEFT JOIN profiles p ON u.id = p.user_id
+            WHERE u.id = %s
+        """
+        row = query_one(sql, (user_id,))
+
+        if not row:
+            return api_response(False, "User account not found.", None, 404)
+
+        # If profile record doesn't exist yet, create one
+        if row.get("profile_id") is None:
+            execute_db("INSERT INTO profiles (user_id) VALUES (%s)", (user_id,))
+            row = query_one(sql, (user_id,))
+
+        profile_data = {
+            "user_id": row["user_id"],
+            "full_name": row["full_name"],
+            "email": row["email"],
+            "role": row["role"] or "USER",
+            "age": row["age"],
+            "gender": row["gender"] or "All",
+            "state": row["state"] or "All",
+            "annual_income": float(row["annual_income"]) if row["annual_income"] is not None else None,
+            "occupation": row["occupation"] or "All",
+            "category": row["category"] or "General",
+            "student_status": bool(row["student_status"]),
+            "farmer_status": bool(row["farmer_status"]),
+            "disability_status": bool(row["disability_status"]),
+            "updated_at": str(row["updated_at"]) if row.get("updated_at") else None
+        }
+
+        return api_response(True, "Profile retrieved successfully.", profile_data)
+
+    except Exception as err:
+        print(f"[API Error GET /api/profile]: {err}")
+        return api_response(False, "Failed to retrieve user profile.", None, 500)
+
+@app.route("/api/profile", methods=["PUT"])
+@token_required
+def update_profile(current_user):
+    """
+    Update logged-in citizen's profile details.
+    Requires Bearer token authorization.
+    """
+    try:
+        user_id = current_user["user_id"]
+        data = request.get_json() or {}
+
+        # 1. Full name update on users table
+        full_name = data.get("full_name", "").strip()
+        if full_name:
+            execute_db("UPDATE users SET full_name = %s WHERE id = %s", (full_name, user_id))
+
+        # 2. Validate age
+        raw_age = data.get("age")
+        age = None
+        if raw_age not in (None, ""):
+            try:
+                age = int(raw_age)
+                if age < 0 or age > 130:
+                    return api_response(False, "Age must be between 0 and 130 years.", None, 400)
+            except (ValueError, TypeError):
+                return api_response(False, "Age must be a valid integer number.", None, 400)
+
+        # 3. Validate annual income
+        raw_income = data.get("annual_income")
+        annual_income = None
+        if raw_income not in (None, ""):
+            try:
+                annual_income = float(raw_income)
+                if annual_income < 0:
+                    return api_response(False, "Annual income cannot be negative.", None, 400)
+            except (ValueError, TypeError):
+                return api_response(False, "Annual income must be a valid numeric amount.", None, 400)
+
+        gender = data.get("gender", "All") or "All"
+        state = data.get("state", "All") or "All"
+        occupation = data.get("occupation", "All") or "All"
+        category = data.get("category", "General") or "General"
+        student_status = bool(data.get("student_status", False))
+        farmer_status = bool(data.get("farmer_status", False))
+        disability_status = bool(data.get("disability_status", False))
+
+        # 4. Upsert profile in MySQL
+        existing_profile = query_one("SELECT id FROM profiles WHERE user_id = %s", (user_id,))
+        if existing_profile:
+            execute_db(
+                """
+                UPDATE profiles SET
+                    age = %s,
+                    gender = %s,
+                    state = %s,
+                    annual_income = %s,
+                    occupation = %s,
+                    category = %s,
+                    student_status = %s,
+                    farmer_status = %s,
+                    disability_status = %s
+                WHERE user_id = %s
+                """,
+                (age, gender, state, annual_income, occupation, category, student_status, farmer_status, disability_status, user_id)
+            )
+        else:
+            execute_db(
+                """
+                INSERT INTO profiles (
+                    user_id, age, gender, state, annual_income,
+                    occupation, category, student_status, farmer_status, disability_status
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (user_id, age, gender, state, annual_income, occupation, category, student_status, farmer_status, disability_status)
+            )
+
+        # 5. Fetch updated profile data to return
+        sql = """
+            SELECT u.id AS user_id, u.full_name, u.email, u.role,
+                   p.age, p.gender, p.state, p.annual_income, p.occupation,
+                   p.category, p.student_status, p.farmer_status, p.disability_status,
+                   p.updated_at
+            FROM users u
+            LEFT JOIN profiles p ON u.id = p.user_id
+            WHERE u.id = %s
+        """
+        row = query_one(sql, (user_id,))
+
+        profile_data = {
+            "user_id": row["user_id"],
+            "full_name": row["full_name"],
+            "email": row["email"],
+            "role": row["role"] or "USER",
+            "age": row["age"],
+            "gender": row["gender"] or "All",
+            "state": row["state"] or "All",
+            "annual_income": float(row["annual_income"]) if row["annual_income"] is not None else None,
+            "occupation": row["occupation"] or "All",
+            "category": row["category"] or "General",
+            "student_status": bool(row["student_status"]),
+            "farmer_status": bool(row["farmer_status"]),
+            "disability_status": bool(row["disability_status"]),
+            "updated_at": str(row["updated_at"]) if row.get("updated_at") else None
+        }
+
+        return api_response(True, "Profile updated successfully.", profile_data)
+
+    except Exception as err:
+        print(f"[API Error PUT /api/profile]: {err}")
+        return api_response(False, "Failed to update user profile.", None, 500)
 
 @app.route("/api/saved", methods=["GET", "POST"])
 @app.route("/api/saved/<int:scheme_id>", methods=["DELETE"])

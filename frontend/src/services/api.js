@@ -75,3 +75,80 @@ export async function checkBackendHealth() {
   const response = await fetch(url);
   return handleResponse(response);
 }
+
+/**
+ * Register a new citizen user account.
+ */
+export async function registerUser(userData) {
+  const url = `${API_BASE_URL}/auth/register`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(userData)
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Login user with email and password credentials.
+ */
+export async function loginUser(credentials) {
+  const url = `${API_BASE_URL}/auth/login`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(credentials)
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Logout user session.
+ */
+export async function logoutUser(token) {
+  const url = `${API_BASE_URL}/auth/logout`;
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetch(url, {
+    method: 'POST',
+    headers
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Fetch authenticated citizen's profile.
+ */
+export async function fetchUserProfile(token) {
+  const url = `${API_BASE_URL}/profile`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update authenticated citizen's profile.
+ */
+export async function updateUserProfile(profileData, token) {
+  const url = `${API_BASE_URL}/profile`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(profileData)
+  });
+  return handleResponse(response);
+}
+

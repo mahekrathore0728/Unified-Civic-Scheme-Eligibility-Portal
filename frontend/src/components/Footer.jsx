@@ -15,7 +15,7 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} Unified Civic Scheme & Eligibility Portal. Designed for transparent citizen assistance.
           </div>
           <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
-            Phase 1 Core Release &bull; College Capstone Demonstration
+            National Public Service Portal &bull; Civic Entitlements & Welfare Discovery
           </div>
         </div>
       </div>
