@@ -12,6 +12,7 @@ export default function Signup() {
     password: '',
     confirm_password: ''
   });
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -21,45 +22,66 @@ export default function Signup() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errorMessage) setErrorMessage('');
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (errorMessage) {
+      setErrorMessage('');
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setErrorMessage('');
     setSuccessMessage('');
 
     const trimmedName = formData.full_name.trim();
     const trimmedEmail = formData.email.trim();
 
+    // Client-side field validations
     if (!trimmedName) {
       setErrorMessage('Please enter your full name.');
       return;
     }
+
     if (!trimmedEmail) {
       setErrorMessage('Please enter your email address.');
       return;
     }
+
     if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setErrorMessage('Please enter a valid email format (e.g. user@domain.com).');
+      setErrorMessage(
+        'Please enter a valid email format (e.g. user@domain.com).'
+      );
       return;
     }
+
     if (!formData.password) {
       setErrorMessage('Password is required.');
       return;
     }
+
     if (formData.password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters in length.');
+      setErrorMessage(
+        'Password must be at least 6 characters in length.'
+      );
       return;
     }
+
     if (formData.password !== formData.confirm_password) {
-      setErrorMessage('Password and Confirm Password do not match.');
+      setErrorMessage(
+        'Password and Confirm Password do not match.'
+      );
       return;
     }
 
     try {
       setLoading(true);
+
       const res = await registerUser({
         full_name: trimmedName,
         email: trimmedEmail,
@@ -68,9 +90,14 @@ export default function Signup() {
       });
 
       if (res.success && res.data) {
-        setSuccessMessage('Registration successful! Redirecting to your portal home...');
+        setSuccessMessage(
+          'Registration successful! Redirecting to your portal home...'
+        );
+
+        // Auto log in new user
         if (res.data.token && res.data.user) {
           login(res.data.user, res.data.token);
+
           setTimeout(() => {
             navigate('/', { replace: true });
           }, 1200);
@@ -80,11 +107,18 @@ export default function Signup() {
           }, 1400);
         }
       } else {
-        setErrorMessage(res.message || 'Registration failed. Please review your details.');
+        setErrorMessage(
+          res.message ||
+            'Registration failed. Please review your details.'
+        );
       }
     } catch (err) {
       console.error('Signup error:', err);
-      setErrorMessage(err.message || 'Unable to connect to registration service.');
+
+      setErrorMessage(
+        err.message ||
+          'Unable to connect to registration service.'
+      );
     } finally {
       setLoading(false);
     }
@@ -113,9 +147,13 @@ export default function Signup() {
         </svg>
       </div>
 
-      <h1 className="civic-auth-title">Civic Portal Registration</h1>
+      <h1 className="civic-auth-title">
+        Civic Portal Registration
+      </h1>
+
       <p className="civic-auth-subtitle">
-        Create an account to save welfare schemes, manage eligibility preferences, and verify entitlements.
+        Create an account to save welfare schemes, manage eligibility
+        preferences, and verify entitlements.
       </p>
 
       <div className="civic-auth-card">
@@ -159,6 +197,7 @@ export default function Signup() {
             >
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
+
             <span>Admin Login</span>
           </button>
         </div>
@@ -166,29 +205,59 @@ export default function Signup() {
         {/* Form Body */}
         <div className="civic-auth-body">
           {errorMessage && (
-            <div className="civic-error-banner" style={{ marginBottom: '18px' }}>
-              <svg className="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div
+              className="civic-error-banner"
+              style={{ marginBottom: '18px' }}
+            >
+              <svg
+                className="error-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
+
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="civic-success-banner" style={{ marginBottom: '18px' }}>
-              <svg className="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div
+              className="civic-success-banner"
+              style={{ marginBottom: '18px' }}
+            >
+              <svg
+                className="success-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
+
               <span>{successMessage}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="auth-field-group">
-              <label htmlFor="full_name" className="auth-field-label">Full Name *</label>
+              <label
+                htmlFor="full_name"
+                className="auth-field-label"
+              >
+                Full Name *
+              </label>
+
               <input
                 id="full_name"
                 name="full_name"
@@ -202,7 +271,13 @@ export default function Signup() {
             </div>
 
             <div className="auth-field-group">
-              <label htmlFor="email" className="auth-field-label">Email Address *</label>
+              <label
+                htmlFor="email"
+                className="auth-field-label"
+              >
+                Email Address *
+              </label>
+
               <input
                 id="email"
                 name="email"
@@ -217,7 +292,13 @@ export default function Signup() {
             </div>
 
             <div className="auth-field-group">
-              <label htmlFor="password" className="auth-field-label">Password *</label>
+              <label
+                htmlFor="password"
+                className="auth-field-label"
+              >
+                Password *
+              </label>
+
               <input
                 id="password"
                 name="password"
@@ -232,7 +313,13 @@ export default function Signup() {
             </div>
 
             <div className="auth-field-group">
-              <label htmlFor="confirm_password" className="auth-field-label">Confirm Password *</label>
+              <label
+                htmlFor="confirm_password"
+                className="auth-field-label"
+              >
+                Confirm Password *
+              </label>
+
               <input
                 id="confirm_password"
                 name="confirm_password"
@@ -251,14 +338,19 @@ export default function Signup() {
               className="auth-submit-btn"
               disabled={loading}
             >
-              {loading ? 'Registering Account...' : 'Register Citizen Account'}
+              {loading
+                ? 'Registering Account...'
+                : 'Register Citizen Account'}
             </button>
           </form>
 
           <div className="auth-footer-links">
             <p>
               Already registered?{' '}
-              <Link to="/login" className="auth-link">
+              <Link
+                to="/login"
+                className="auth-link"
+              >
                 Sign In to Citizen Account
               </Link>
             </p>

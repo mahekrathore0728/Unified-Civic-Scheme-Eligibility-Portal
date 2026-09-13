@@ -12,12 +12,16 @@ export default function Footer() {
               <div className="civic-badge-in" aria-hidden="true">
                 <span>IN</span>
               </div>
-              <span className="footer-brand-name">Unified Civic Scheme & Eligibility Portal</span>
+              <span className="footer-brand-name">
+                Unified Civic Scheme & Eligibility Portal
+              </span>
             </div>
+
             <p className="footer-description">
               A centralized digital civic-tech platform empowering Indian citizens to discover government
               welfare schemes, verify deterministic eligibility criteria, and access public entitlements transparently.
             </p>
+
             <div className="footer-support-box">
               <div className="support-item">
                 <svg
@@ -34,6 +38,7 @@ export default function Footer() {
                 </svg>
                 <span>Civic Citizen Helpdesk: 1800-11-2026 (Toll-Free)</span>
               </div>
+
               <div className="support-item">
                 <svg
                   className="support-icon"
@@ -80,22 +85,34 @@ export default function Footer() {
             <h4 className="footer-col-title">Scheme Sectors</h4>
             <ul className="footer-links-list">
               <li>
-                <Link to="/schemes?category=Agriculture">Agriculture & Farmers Welfare</Link>
+                <Link to="/schemes?category=Agriculture">
+                  Agriculture & Farmers Welfare
+                </Link>
               </li>
               <li>
-                <Link to="/schemes?category=Education">Higher Education & Scholarships</Link>
+                <Link to="/schemes?category=Education">
+                  Higher Education & Scholarships
+                </Link>
               </li>
               <li>
-                <Link to="/schemes?category=Healthcare">Health Assurance & PM-JAY</Link>
+                <Link to="/schemes?category=Healthcare">
+                  Health Assurance & PM-JAY
+                </Link>
               </li>
               <li>
-                <Link to="/schemes?category=Housing">Housing for All (PMAY)</Link>
+                <Link to="/schemes?category=Housing">
+                  Housing for All (PMAY)
+                </Link>
               </li>
               <li>
-                <Link to="/schemes?category=Employment">Employment & Skill Development</Link>
+                <Link to="/schemes?category=Employment">
+                  Employment & Skill Development
+                </Link>
               </li>
               <li>
-                <Link to="/schemes?category=Women%20%26%20Child">Women & Child Development</Link>
+                <Link to="/schemes?category=Women%20%26%20Child">
+                  Women & Child Development
+                </Link>
               </li>
             </ul>
           </div>
@@ -103,11 +120,13 @@ export default function Footer() {
           {/* Col 4: Important Disclaimer */}
           <div className="civic-footer-col">
             <h4 className="footer-col-title">Important Disclaimer</h4>
+
             <p className="footer-disclaimer-text">
               <strong>Public Information Notice:</strong> This portal provides deterministic scheme eligibility
               verification based on statutory eligibility guidelines. Official applications are processed exclusively
               on verified government websites linked within each scheme.
             </p>
+
             <p className="footer-disclaimer-subtext">
               Citizens are advised to verify latest documentation rules and official notifications directly on the respective ministerial portal before final submission.
             </p>
@@ -121,6 +140,7 @@ export default function Footer() {
           <div className="bottom-text-left">
             &copy; {new Date().getFullYear()} Unified Civic Scheme & Eligibility Portal &bull; Official Civic Services Platform
           </div>
+
           <div className="bottom-text-right">
             Strictly Non-Commercial &bull; All Scheme Information is Based on Public Government Records
           </div>

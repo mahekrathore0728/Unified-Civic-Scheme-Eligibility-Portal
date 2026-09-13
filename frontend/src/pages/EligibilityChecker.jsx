@@ -37,17 +37,24 @@ export default function EligibilityChecker() {
 
   const loadFromProfile = async () => {
     if (!token) return;
+
     try {
       setProfileLoading(true);
       setError(null);
+
       const res = await fetchUserProfile(token);
+
       if (res.success && res.data) {
         const p = res.data;
+
         setFormData({
           age: p.age !== null && p.age !== undefined ? String(p.age) : '',
           gender: p.gender && p.gender !== 'All' ? p.gender : 'Male',
           state: p.state || 'Maharashtra',
-          annual_income: p.annual_income !== null && p.annual_income !== undefined ? String(p.annual_income) : '',
+          annual_income:
+            p.annual_income !== null && p.annual_income !== undefined
+              ? String(p.annual_income)
+              : '',
           occupation: p.occupation && p.occupation !== 'All' ? p.occupation : 'Student',
           category: p.category || 'General',
           student_status: Boolean(p.student_status),
@@ -65,10 +72,12 @@ export default function EligibilityChecker() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
     if (error) setError(null);
   };
 
@@ -87,18 +96,22 @@ export default function EligibilityChecker() {
       setError('Please enter applicant age.');
       return;
     }
+
     if (!formData.gender) {
       setError('Please select applicant gender.');
       return;
     }
+
     if (!formData.state) {
       setError('Please select your state of residence.');
       return;
     }
+
     if (formData.annual_income === '') {
       setError('Please enter annual family income.');
       return;
     }
+
     if (!formData.category) {
       setError('Please select social category.');
       return;
@@ -106,6 +119,7 @@ export default function EligibilityChecker() {
 
     try {
       setLoading(true);
+
       const payload = {
         age: parseInt(formData.age, 10),
         gender: formData.gender,
@@ -119,15 +133,20 @@ export default function EligibilityChecker() {
       };
 
       const res = await evaluateEligibility(payload);
+
       if (res.success && res.data) {
         setResults(res.data);
-        setActiveTab(res.data.eligible.length > 0 ? 'eligible' : 'not_eligible');
+        setActiveTab(
+          res.data.eligible.length > 0 ? 'eligible' : 'not_eligible'
+        );
       } else {
         setError(res.message || 'Eligibility evaluation failed.');
       }
     } catch (err) {
       console.error('Eligibility check error:', err);
-      setError('Failed to connect to eligibility engine. Please verify the backend server is running.');
+      setError(
+        'Failed to connect to eligibility engine. Please verify the backend server is running.'
+      );
     } finally {
       setLoading(false);
     }
@@ -140,8 +159,11 @@ export default function EligibilityChecker() {
         <h1 className="checker-page-title">
           Deterministic Scheme Eligibility Checker
         </h1>
+
         <p className="checker-page-subtitle">
-          Enter your demographic and economic details below. Our deterministic rule engine compares your profile with statutory government criteria without any AI estimation.
+          Enter your demographic and economic details below. Our deterministic
+          rule engine compares your profile with statutory government criteria
+          without any AI estimation.
         </p>
       </div>
 
@@ -150,7 +172,10 @@ export default function EligibilityChecker() {
         {/* Left Column: Citizen Criteria Inputs Form */}
         <div className="checker-input-card">
           <div className="checker-card-header-row">
-            <h2 className="checker-card-title">Citizen Criteria Inputs</h2>
+            <h2 className="checker-card-title">
+              Citizen Criteria Inputs
+            </h2>
+
             {isAuthenticated && (
               <button
                 type="button"
@@ -159,7 +184,9 @@ export default function EligibilityChecker() {
                 disabled={profileLoading}
                 title="Autofill demographic values from your registered citizen profile"
               >
-                {profileLoading ? 'Loading Profile...' : 'Autofill from Profile'}
+                {profileLoading
+                  ? 'Loading Profile...'
+                  : 'Autofill from Profile'}
               </button>
             )}
           </div>
@@ -168,7 +195,10 @@ export default function EligibilityChecker() {
             <div className="checker-form-grid">
               {/* Age */}
               <div className="checker-form-group">
-                <label htmlFor="age" className="checker-field-label">Age (Years) *</label>
+                <label htmlFor="age" className="checker-field-label">
+                  Age (Years) *
+                </label>
+
                 <input
                   id="age"
                   name="age"
@@ -185,7 +215,10 @@ export default function EligibilityChecker() {
 
               {/* Gender */}
               <div className="checker-form-group">
-                <label htmlFor="gender" className="checker-field-label">Gender *</label>
+                <label htmlFor="gender" className="checker-field-label">
+                  Gender *
+                </label>
+
                 <select
                   id="gender"
                   name="gender"
@@ -203,7 +236,10 @@ export default function EligibilityChecker() {
 
               {/* State of Residence */}
               <div className="checker-form-group">
-                <label htmlFor="state" className="checker-field-label">State of Residence *</label>
+                <label htmlFor="state" className="checker-field-label">
+                  State of Residence *
+                </label>
+
                 <select
                   id="state"
                   name="state"
@@ -215,17 +251,28 @@ export default function EligibilityChecker() {
                   <option value="">Select State</option>
                   <option value="Maharashtra">Maharashtra</option>
                   <option value="All">Pan-India (Any State)</option>
-                  {INDIAN_STATES.filter((st) => st !== 'All' && st !== 'Maharashtra').map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
+
+                  {INDIAN_STATES
+                    .filter(
+                      (st) => st !== 'All' && st !== 'Maharashtra'
+                    )
+                    .map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
                 </select>
               </div>
 
               {/* Annual Family Income */}
               <div className="checker-form-group">
-                <label htmlFor="annual_income" className="checker-field-label">Annual Family Income (INR) *</label>
+                <label
+                  htmlFor="annual_income"
+                  className="checker-field-label"
+                >
+                  Annual Family Income (INR) *
+                </label>
+
                 <input
                   id="annual_income"
                   name="annual_income"
@@ -242,7 +289,13 @@ export default function EligibilityChecker() {
 
               {/* Social Category */}
               <div className="checker-form-group">
-                <label htmlFor="category" className="checker-field-label">Social Category *</label>
+                <label
+                  htmlFor="category"
+                  className="checker-field-label"
+                >
+                  Social Category *
+                </label>
+
                 <select
                   id="category"
                   name="category"
@@ -262,7 +315,13 @@ export default function EligibilityChecker() {
 
               {/* Occupation */}
               <div className="checker-form-group">
-                <label htmlFor="occupation" className="checker-field-label">Occupation</label>
+                <label
+                  htmlFor="occupation"
+                  className="checker-field-label"
+                >
+                  Occupation
+                </label>
+
                 <input
                   id="occupation"
                   name="occupation"
@@ -277,7 +336,10 @@ export default function EligibilityChecker() {
 
             {/* Specific Citizen Status Checkbox Box */}
             <div className="status-checkboxes-box">
-              <span className="status-box-heading">Specific Citizen Status:</span>
+              <span className="status-box-heading">
+                Specific Citizen Status:
+              </span>
+
               <div className="checkboxes-row">
                 <label className="civic-checkbox-label">
                   <input
@@ -316,12 +378,24 @@ export default function EligibilityChecker() {
 
             {/* Error Message */}
             {error && (
-              <div className="civic-error-banner" style={{ marginTop: '16px' }}>
-                <svg className="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div
+                className="civic-error-banner"
+                style={{ marginTop: '16px' }}
+              >
+                <svg
+                  className="error-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
+
                 <span>{error}</span>
               </div>
             )}
@@ -333,10 +407,17 @@ export default function EligibilityChecker() {
                 className="checker-submit-btn"
                 disabled={loading}
               >
-                {loading ? 'Evaluating Eligibility Rules...' : 'Check Eligibility'}
+                {loading
+                  ? 'Evaluating Eligibility Rules...'
+                  : 'Check Eligibility'}
               </button>
 
-              {(formData.age || formData.gender || formData.state || formData.annual_income || formData.category || results) && (
+              {(formData.age ||
+                formData.gender ||
+                formData.state ||
+                formData.annual_income ||
+                formData.category ||
+                results) && (
                 <button
                   type="button"
                   onClick={handleReset}
@@ -352,7 +433,7 @@ export default function EligibilityChecker() {
         {/* Right Column: Information Panel or Results Display */}
         <div className="checker-results-column">
           {!results ? (
-            /* Pristine State: "Ready to Verify Eligibility" Matching Image 4 */
+            /* Pristine State: Ready to Verify Eligibility */
             <div className="ready-to-verify-card">
               <div className="shield-icon-wrapper">
                 <svg
@@ -369,9 +450,14 @@ export default function EligibilityChecker() {
                   <polyline points="9 12 11 14 15 10" />
                 </svg>
               </div>
-              <h3 className="ready-verify-title">Ready to Verify Eligibility</h3>
+
+              <h3 className="ready-verify-title">
+                Ready to Verify Eligibility
+              </h3>
+
               <p className="ready-verify-desc">
-                Fill in or verify your demographic details on the left and click "Check Eligibility" to see the rule comparison.
+                Fill in or verify your demographic details on the left and
+                click "Check Eligibility" to see the rule comparison.
               </p>
             </div>
           ) : (
@@ -380,22 +466,34 @@ export default function EligibilityChecker() {
               {/* Summary Stats */}
               <div className="results-header-box">
                 <div>
-                  <h3 className="results-main-title">Evaluation Summary</h3>
+                  <h3 className="results-main-title">
+                    Evaluation Summary
+                  </h3>
+
                   <p className="results-sub-text">
                     Evaluated against statutory schemes stored in the database.
                   </p>
                 </div>
+
                 <div className="results-metrics-badges">
                   <div className="metric-badge eligible-metric">
-                    <span className="metric-num">{results.eligible_count}</span>
+                    <span className="metric-num">
+                      {results.eligible_count}
+                    </span>
                     <span className="metric-lbl">Eligible</span>
                   </div>
+
                   <div className="metric-badge unmet-metric">
-                    <span className="metric-num">{results.not_eligible_count}</span>
+                    <span className="metric-num">
+                      {results.not_eligible_count}
+                    </span>
                     <span className="metric-lbl">Unmet</span>
                   </div>
+
                   <div className="metric-badge total-metric">
-                    <span className="metric-num">{results.total_evaluated}</span>
+                    <span className="metric-num">
+                      {results.total_evaluated}
+                    </span>
                     <span className="metric-lbl">Evaluated</span>
                   </div>
                 </div>
@@ -407,16 +505,21 @@ export default function EligibilityChecker() {
                   type="button"
                   role="tab"
                   aria-selected={activeTab === 'eligible'}
-                  className={`results-tab-button ${activeTab === 'eligible' ? 'active' : ''}`}
+                  className={`results-tab-button ${
+                    activeTab === 'eligible' ? 'active' : ''
+                  }`}
                   onClick={() => setActiveTab('eligible')}
                 >
                   Qualifying Schemes ({results.eligible_count})
                 </button>
+
                 <button
                   type="button"
                   role="tab"
                   aria-selected={activeTab === 'not_eligible'}
-                  className={`results-tab-button ${activeTab === 'not_eligible' ? 'active' : ''}`}
+                  className={`results-tab-button ${
+                    activeTab === 'not_eligible' ? 'active' : ''
+                  }`}
                   onClick={() => setActiveTab('not_eligible')}
                 >
                   Criteria Not Matched ({results.not_eligible_count})
@@ -429,8 +532,11 @@ export default function EligibilityChecker() {
                   results.eligible.length === 0 ? (
                     <div className="no-schemes-notice">
                       <h4>No Qualifying Schemes Matched</h4>
+
                       <p>
-                        Based on the criteria entered, no schemes currently meet all qualifications. Check the "Criteria Not Matched" tab to see specific constraints.
+                        Based on the criteria entered, no schemes currently
+                        meet all qualifications. Check the "Criteria Not
+                        Matched" tab to see specific constraints.
                       </p>
                     </div>
                   ) : (
@@ -448,7 +554,11 @@ export default function EligibilityChecker() {
                 ) : results.not_eligible.length === 0 ? (
                   <div className="no-schemes-notice">
                     <h4>All Schemes Qualified</h4>
-                    <p>Your profile satisfies statutory criteria across all evaluated schemes.</p>
+
+                    <p>
+                      Your profile satisfies statutory criteria across all
+                      evaluated schemes.
+                    </p>
                   </div>
                 ) : (
                   <div className="results-schemes-stack">

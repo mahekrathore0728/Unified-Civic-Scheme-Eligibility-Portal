@@ -116,6 +116,7 @@ export default function Navbar() {
                     </svg>
                     <span>{getFirstName(user?.full_name)}</span>
                   </NavLink>
+
                   <button
                     type="button"
                     onClick={handleLogout}

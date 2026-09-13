@@ -52,20 +52,31 @@ export default function Profile() {
   useEffect(() => {
     async function loadProfile() {
       if (!token) return;
+
       try {
         setLoading(true);
         setErrorMessage('');
+
         const res = await fetchUserProfile(token);
+
         if (res.success && res.data) {
           const d = res.data;
+
           setFormData({
             full_name: d.full_name || '',
             email: d.email || '',
             role: d.role || 'USER',
-            age: d.age !== null && d.age !== undefined ? String(d.age) : '',
+            age:
+              d.age !== null && d.age !== undefined
+                ? String(d.age)
+                : '',
             gender: d.gender || 'All',
             state: d.state || 'All',
-            annual_income: d.annual_income !== null && d.annual_income !== undefined ? String(d.annual_income) : '',
+            annual_income:
+              d.annual_income !== null &&
+              d.annual_income !== undefined
+                ? String(d.annual_income)
+                : '',
             occupation: d.occupation || 'All',
             category: d.category || 'General',
             student_status: Boolean(d.student_status),
@@ -73,30 +84,44 @@ export default function Profile() {
             disability_status: Boolean(d.disability_status)
           });
         } else {
-          setErrorMessage(res.message || 'Could not load profile.');
+          setErrorMessage(
+            res.message || 'Could not load profile.'
+          );
         }
       } catch (err) {
         console.error('Failed to load profile:', err);
-        setErrorMessage(err.message || 'Failed to connect to backend server.');
+
+        setErrorMessage(
+          err.message || 'Failed to connect to backend server.'
+        );
       } finally {
         setLoading(false);
       }
     }
+
     loadProfile();
   }, [token]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    if (errorMessage) setErrorMessage('');
-    if (successMessage) setSuccessMessage('');
+
+    if (errorMessage) {
+      setErrorMessage('');
+    }
+
+    if (successMessage) {
+      setSuccessMessage('');
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setSaving(true);
     setErrorMessage('');
     setSuccessMessage('');
@@ -104,10 +129,16 @@ export default function Profile() {
     try {
       const payload = {
         full_name: formData.full_name.trim(),
-        age: formData.age !== '' ? parseInt(formData.age, 10) : null,
+        age:
+          formData.age !== ''
+            ? parseInt(formData.age, 10)
+            : null,
         gender: formData.gender,
         state: formData.state,
-        annual_income: formData.annual_income !== '' ? parseFloat(formData.annual_income) : null,
+        annual_income:
+          formData.annual_income !== ''
+            ? parseFloat(formData.annual_income)
+            : null,
         occupation: formData.occupation,
         category: formData.category,
         student_status: Boolean(formData.student_status),
@@ -116,15 +147,27 @@ export default function Profile() {
       };
 
       const res = await updateUserProfile(payload, token);
+
       if (res.success && res.data) {
-        setSuccessMessage('Profile updated successfully! Your updated details are saved in the database.');
-        updateUser({ full_name: res.data.full_name });
+        setSuccessMessage(
+          'Profile updated successfully! Your updated details are saved in the database.'
+        );
+
+        // Update user state in context
+        updateUser({
+          full_name: res.data.full_name
+        });
       } else {
-        setErrorMessage(res.message || 'Failed to update profile.');
+        setErrorMessage(
+          res.message || 'Failed to update profile.'
+        );
       }
     } catch (err) {
       console.error('Profile update error:', err);
-      setErrorMessage(err.message || 'An error occurred while updating profile.');
+
+      setErrorMessage(
+        err.message || 'An error occurred while updating profile.'
+      );
     } finally {
       setSaving(false);
     }
@@ -132,9 +175,19 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="civic-loader-container" style={{ padding: '60px 0' }}>
-        <div className="civic-spinner" role="status" aria-label="Loading profile"></div>
-        <p className="civic-loader-text">Retrieving citizen profile from database...</p>
+      <div
+        className="civic-loader-container"
+        style={{ padding: '60px 0' }}
+      >
+        <div
+          className="civic-spinner"
+          role="status"
+          aria-label="Loading profile"
+        ></div>
+
+        <p className="civic-loader-text">
+          Retrieving citizen profile from database...
+        </p>
       </div>
     );
   }
@@ -145,36 +198,71 @@ export default function Profile() {
       <div className="profile-banner-card">
         <div className="banner-left">
           <div className="banner-title-row">
-            <h1 className="profile-main-title">Citizen Profile & Socioeconomic Parameters</h1>
-            <span className="profile-role-badge">Role: {formData.role}</span>
+            <h1 className="profile-main-title">
+              Citizen Profile & Socioeconomic Parameters
+            </h1>
+
+            <span className="profile-role-badge">
+              Role: {formData.role}
+            </span>
           </div>
+
           <p className="profile-subtitle">
-            Maintain your demographic and income details to enable instant scheme eligibility evaluation across public welfare programs.
+            Maintain your demographic and income details to enable
+            instant scheme eligibility evaluation across public
+            welfare programs.
           </p>
         </div>
 
-        <Link to="/eligibility" className="profile-eligibility-cta">
+        <Link
+          to="/eligibility"
+          className="profile-eligibility-cta"
+        >
           Run Eligibility Check &rarr;
         </Link>
       </div>
 
       {errorMessage && (
-        <div className="civic-error-banner" style={{ marginBottom: '20px' }}>
-          <svg className="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div
+          className="civic-error-banner"
+          style={{ marginBottom: '20px' }}
+        >
+          <svg
+            className="error-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
+
           <span>{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div className="civic-success-banner" style={{ marginBottom: '20px' }}>
-          <svg className="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div
+          className="civic-success-banner"
+          style={{ marginBottom: '20px' }}
+        >
+          <svg
+            className="success-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
             <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
+
           <span>{successMessage}</span>
         </div>
       )}
@@ -182,12 +270,20 @@ export default function Profile() {
       <div className="profile-form-card">
         <form onSubmit={handleSubmit}>
           {/* Section 1: Account Information */}
-          <div className="profile-section-heading">Account Information</div>
+          <div className="profile-section-heading">
+            Account Information
+          </div>
+
           <div className="profile-fields-grid">
             <div className="profile-field-group">
-              <label htmlFor="full_name" className="profile-field-label">
-                Full Name <span style={{ color: 'var(--error)' }}>*</span>
+              <label
+                htmlFor="full_name"
+                className="profile-field-label"
+              >
+                Full Name{' '}
+                <span style={{ color: 'var(--error)' }}>*</span>
               </label>
+
               <input
                 id="full_name"
                 name="full_name"
@@ -200,9 +296,13 @@ export default function Profile() {
             </div>
 
             <div className="profile-field-group">
-              <label htmlFor="email" className="profile-field-label">
+              <label
+                htmlFor="email"
+                className="profile-field-label"
+              >
                 Email Address (Primary Identity)
               </label>
+
               <input
                 id="email"
                 name="email"
@@ -212,6 +312,7 @@ export default function Profile() {
                 value={formData.email}
                 title="Email is your registered account identifier and cannot be modified"
               />
+
               <span className="profile-field-hint">
                 Registered citizen identifier
               </span>
@@ -219,12 +320,22 @@ export default function Profile() {
           </div>
 
           {/* Section 2: Demographic & Economic Criteria */}
-          <div className="profile-section-heading" style={{ marginTop: '28px' }}>
+          <div
+            className="profile-section-heading"
+            style={{ marginTop: '28px' }}
+          >
             Demographic & Economic Criteria
           </div>
+
           <div className="profile-fields-grid">
             <div className="profile-field-group">
-              <label htmlFor="age" className="profile-field-label">Age (in years)</label>
+              <label
+                htmlFor="age"
+                className="profile-field-label"
+              >
+                Age (in years)
+              </label>
+
               <input
                 id="age"
                 name="age"
@@ -239,7 +350,13 @@ export default function Profile() {
             </div>
 
             <div className="profile-field-group">
-              <label htmlFor="gender" className="profile-field-label">Gender</label>
+              <label
+                htmlFor="gender"
+                className="profile-field-label"
+              >
+                Gender
+              </label>
+
               <select
                 id="gender"
                 name="gender"
@@ -255,7 +372,13 @@ export default function Profile() {
             </div>
 
             <div className="profile-field-group">
-              <label htmlFor="state" className="profile-field-label">State / Union Territory</label>
+              <label
+                htmlFor="state"
+                className="profile-field-label"
+              >
+                State / Union Territory
+              </label>
+
               <select
                 id="state"
                 name="state"
@@ -265,14 +388,22 @@ export default function Profile() {
               >
                 {INDIAN_STATES.map((st) => (
                   <option key={st} value={st}>
-                    {st === 'All' ? 'Pan-India (All States & UTs)' : st}
+                    {st === 'All'
+                      ? 'Pan-India (All States & UTs)'
+                      : st}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="profile-field-group">
-              <label htmlFor="annual_income" className="profile-field-label">Annual Family Income (₹)</label>
+              <label
+                htmlFor="annual_income"
+                className="profile-field-label"
+              >
+                Annual Family Income (₹)
+              </label>
+
               <input
                 id="annual_income"
                 name="annual_income"
@@ -287,7 +418,13 @@ export default function Profile() {
             </div>
 
             <div className="profile-field-group">
-              <label htmlFor="occupation" className="profile-field-label">Primary Occupation</label>
+              <label
+                htmlFor="occupation"
+                className="profile-field-label"
+              >
+                Primary Occupation
+              </label>
+
               <select
                 id="occupation"
                 name="occupation"
@@ -304,7 +441,13 @@ export default function Profile() {
             </div>
 
             <div className="profile-field-group">
-              <label htmlFor="category" className="profile-field-label">Social Category</label>
+              <label
+                htmlFor="category"
+                className="profile-field-label"
+              >
+                Social Category
+              </label>
+
               <select
                 id="category"
                 name="category"
@@ -312,19 +455,33 @@ export default function Profile() {
                 value={formData.category}
                 onChange={handleChange}
               >
-                <option value="General">General (Unreserved)</option>
-                <option value="OBC">Other Backward Classes (OBC)</option>
-                <option value="SC">Scheduled Caste (SC)</option>
-                <option value="ST">Scheduled Tribe (ST)</option>
-                <option value="EWS">Economically Weaker Section (EWS)</option>
+                <option value="General">
+                  General (Unreserved)
+                </option>
+                <option value="OBC">
+                  Other Backward Classes (OBC)
+                </option>
+                <option value="SC">
+                  Scheduled Caste (SC)
+                </option>
+                <option value="ST">
+                  Scheduled Tribe (ST)
+                </option>
+                <option value="EWS">
+                  Economically Weaker Section (EWS)
+                </option>
               </select>
             </div>
           </div>
 
           {/* Section 3: Specific Beneficiary Status */}
-          <div className="profile-section-heading" style={{ marginTop: '28px' }}>
+          <div
+            className="profile-section-heading"
+            style={{ marginTop: '28px' }}
+          >
             Specific Beneficiary Status
           </div>
+
           <div className="profile-checkbox-row">
             <label className="civic-checkbox-label">
               <input
@@ -334,6 +491,7 @@ export default function Profile() {
                 checked={formData.farmer_status}
                 onChange={handleChange}
               />
+
               <span>Landholding Farmer</span>
             </label>
 
@@ -345,6 +503,7 @@ export default function Profile() {
                 checked={formData.student_status}
                 onChange={handleChange}
               />
+
               <span>Currently Enrolled Student</span>
             </label>
 
@@ -356,7 +515,10 @@ export default function Profile() {
                 checked={formData.disability_status}
                 onChange={handleChange}
               />
-              <span>Person with Disability (min 40% PwD)</span>
+
+              <span>
+                Person with Disability (min 40% PwD)
+              </span>
             </label>
           </div>
 
@@ -367,9 +529,15 @@ export default function Profile() {
               className="profile-save-btn"
               disabled={saving}
             >
-              {saving ? 'Saving Changes...' : 'Save Profile Changes'}
+              {saving
+                ? 'Saving Changes...'
+                : 'Save Profile Changes'}
             </button>
-            <Link to="/schemes" className="profile-browse-link">
+
+            <Link
+              to="/schemes"
+              className="profile-browse-link"
+            >
               Browse Welfare Schemes
             </Link>
           </div>
