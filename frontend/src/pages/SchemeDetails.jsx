@@ -31,19 +31,19 @@ export default function SchemeDetails() {
 
   if (loading) {
     return (
-      <div className="loading-spinner-container">
-        <div className="spinner" role="status" aria-label="Loading scheme profile"></div>
-        <p style={{ color: 'var(--text-muted)' }}>Loading scheme profile from database...</p>
+      <div className="civic-loader-container" style={{ padding: '60px 0' }}>
+        <div className="civic-spinner" role="status" aria-label="Loading scheme profile"></div>
+        <p className="civic-loader-text">Loading scheme profile from database...</p>
       </div>
     );
   }
 
   if (error || !scheme) {
     return (
-      <div className="empty-state">
-        <h3 className="empty-state-title">Scheme Profile Unavailable</h3>
-        <p className="empty-state-desc">{error || 'Scheme could not be located.'}</p>
-        <Link to="/schemes" className="btn btn-primary">
+      <div className="empty-schemes-box" style={{ margin: '40px auto', maxWidth: '600px' }}>
+        <h3 className="empty-title">Scheme Profile Unavailable</h3>
+        <p className="empty-desc">{error || 'Scheme could not be located.'}</p>
+        <Link to="/schemes" className="btn-view-scheme" style={{ marginTop: '16px', display: 'inline-block' }}>
           &larr; Return to Schemes Catalog
         </Link>
       </div>
@@ -57,127 +57,126 @@ export default function SchemeDetails() {
 
   return (
     <div className="scheme-details-view">
-      {/* Navigation Breadcrumb */}
-      <div style={{ marginBottom: '18px' }}>
-        <Link to="/schemes" style={{ color: 'var(--gov-blue)', textDecoration: 'none', fontWeight: 600, fontSize: '0.92rem' }}>
+      {/* Back Link */}
+      <div className="breadcrumb-nav">
+        <Link to="/schemes" className="breadcrumb-back-link">
           &larr; Back to Schemes Catalog
         </Link>
       </div>
 
-      <article className="scheme-details-container">
-        <header className="details-header">
-          <div className="scheme-badges-row">
-            <span className="badge badge-category">{scheme.category}</span>
-            <span className={`badge ${isCentral ? 'badge-scope-central' : 'badge-scope-state'}`}>
+      <article className="civic-details-container">
+        {/* Header Block */}
+        <header className="details-header-block">
+          <div className="details-badges-row">
+            <span className="civic-badge badge-category">{scheme.category}</span>
+            <span className={`civic-badge ${isCentral ? 'badge-central' : 'badge-state'}`}>
               {isCentral ? 'Central Sector Scheme' : `State Scheme: ${scheme.state_requirement}`}
             </span>
-            <span className="badge" style={{ backgroundColor: '#E0F2FE', color: '#0369A1' }}>
-              Status: {scheme.status}
+            <span className="civic-badge" style={{ backgroundColor: '#E0F2FE', color: '#0369A1' }}>
+              Status: {scheme.status || 'Active'}
             </span>
           </div>
-          <h1 className="details-title">{scheme.name}</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+          <h1 className="details-scheme-title">{scheme.name}</h1>
+          <p className="details-deadline-text">
             Application Deadline: <strong>{scheme.deadline || 'Ongoing / No Deadline'}</strong>
           </p>
         </header>
 
-        {/* Section 1: Overview & Description */}
-        <section className="details-section">
-          <h2 className="details-section-title">Scheme Overview</h2>
-          <p style={{ fontSize: '1rem', lineHeight: 1.7, color: 'var(--text-main)' }}>
+        {/* Section 1: Overview */}
+        <section className="details-card-section">
+          <h2 className="details-heading">Scheme Overview</h2>
+          <p className="details-body-text">
             {scheme.description}
           </p>
         </section>
 
-        {/* Section 2: Objectives & Key Benefits */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-          <div style={{ backgroundColor: '#F8FAFC', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-            <h3 style={{ color: 'var(--gov-blue)', fontSize: '1.1rem', marginBottom: '8px', fontWeight: 700 }}>
+        {/* Section 2: Objectives & Benefits */}
+        <div className="details-twin-grid">
+          <div className="details-subcard card-objective">
+            <h3 className="subcard-title" style={{ color: 'var(--gov-blue)' }}>
               Primary Objective
             </h3>
-            <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.6 }}>
+            <p className="subcard-text">
               {scheme.objective || 'To provide welfare and economic assistance to eligible beneficiaries.'}
             </p>
           </div>
 
-          <div style={{ backgroundColor: '#F0FDF4', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid #BBF7D0' }}>
-            <h3 style={{ color: 'var(--indian-green)', fontSize: '1.1rem', marginBottom: '8px', fontWeight: 700 }}>
+          <div className="details-subcard card-benefits">
+            <h3 className="subcard-title" style={{ color: 'var(--indian-green)' }}>
               Benefits & Entitlements
             </h3>
-            <p style={{ fontSize: '0.95rem', color: '#166534', lineHeight: 1.6 }}>
+            <p className="subcard-text">
               {scheme.benefits || 'Financial and material assistance as notified by the governing department.'}
             </p>
           </div>
         </div>
 
-        {/* Section 3: Eligibility Rules & Criteria */}
-        <section className="details-section">
-          <h2 className="details-section-title">Eligibility Criteria Breakdown</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginBottom: '14px' }}>
+        {/* Section 3: Eligibility Criteria Breakdown */}
+        <section className="details-card-section">
+          <h2 className="details-heading">Eligibility Criteria Breakdown</h2>
+          <p className="details-helper-text">
             {scheme.eligibility_rules || 'Beneficiaries must satisfy all standard demographic and socioeconomic qualifications listed below.'}
           </p>
 
-          <div className="criteria-grid">
-            <div className="criteria-box">
-              <div className="criteria-box-label">Eligible Age Bracket</div>
-              <div className="criteria-box-value">
-                {scheme.age_min} to {scheme.age_max} years
-              </div>
+          <div className="criteria-metric-grid">
+            <div className="criteria-metric-box">
+              <span className="metric-box-label">Eligible Age Bracket</span>
+              <span className="metric-box-val">{scheme.age_min} to {scheme.age_max} years</span>
             </div>
 
-            <div className="criteria-box">
-              <div className="criteria-box-label">Annual Income Ceiling</div>
-              <div className="criteria-box-value">
+            <div className="criteria-metric-box">
+              <span className="metric-box-label">Annual Income Ceiling</span>
+              <span className="metric-box-val">
                 {scheme.income_limit ? `Up to ₹${scheme.income_limit.toLocaleString('en-IN')} / year` : 'No Income Cap'}
-              </div>
+              </span>
             </div>
 
-            <div className="criteria-box">
-              <div className="criteria-box-label">Gender Criteria</div>
-              <div className="criteria-box-value">
+            <div className="criteria-metric-box">
+              <span className="metric-box-label">Gender Criteria</span>
+              <span className="metric-box-val">
                 {scheme.gender === 'All' ? 'All Genders Eligible' : scheme.gender}
-              </div>
+              </span>
             </div>
 
-            <div className="criteria-box">
-              <div className="criteria-box-label">Target Social Category</div>
-              <div className="criteria-box-value">
+            <div className="criteria-metric-box">
+              <span className="metric-box-label">Target Social Category</span>
+              <span className="metric-box-val">
                 {scheme.category_requirement === 'All' ? 'All Categories (Open)' : scheme.category_requirement}
-              </div>
+              </span>
             </div>
 
-            <div className="criteria-box">
-              <div className="criteria-box-label">Applicable State / Region</div>
-              <div className="criteria-box-value">
+            <div className="criteria-metric-box">
+              <span className="metric-box-label">Applicable State / Region</span>
+              <span className="metric-box-val">
                 {scheme.state_requirement === 'All' ? 'Pan-India (All States & UTs)' : scheme.state_requirement}
-              </div>
+              </span>
             </div>
 
-            <div className="criteria-box">
-              <div className="criteria-box-label">Beneficiary Requirements</div>
-              <div className="criteria-box-value" style={{ fontSize: '0.9rem' }}>
+            <div className="criteria-metric-box">
+              <span className="metric-box-label">Beneficiary Requirements</span>
+              <span className="metric-box-val" style={{ fontSize: '0.88rem' }}>
                 {scheme.farmer_requirement && <div>&bull; Landholding Farmer</div>}
                 {scheme.student_requirement && <div>&bull; Enrolled Student</div>}
                 {scheme.disability_requirement && <div>&bull; Person with Disability (PwD)</div>}
                 {!scheme.farmer_requirement && !scheme.student_requirement && !scheme.disability_requirement && (
-                  <div>Standard Civic Beneficiary</div>
+                  <div>Standard Citizen Entitlement</div>
                 )}
-              </div>
+              </span>
             </div>
           </div>
         </section>
 
         {/* Section 4: Required Documents Checklist */}
-        <section className="details-section">
-          <h2 className="details-section-title">Required Documents Checklist</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>
-            Ensure you have legible physical or digital copies of the following documents prior to applying on the official portal:
+        <section className="details-card-section">
+          <h2 className="details-heading">Required Documents Checklist</h2>
+          <p className="details-helper-text">
+            Ensure you have legible copies of the following documents prior to applying on the official portal:
           </p>
 
-          <ul className="docs-checklist">
+          <ul className="docs-list-grid">
             {documentsList.map((doc, idx) => (
-              <li key={idx} className="docs-checklist-item">
-                <span style={{ color: 'var(--indian-green)', fontWeight: 700 }} aria-hidden="true">&#10003;</span>
+              <li key={idx} className="doc-item">
+                <span className="doc-check-icon" aria-hidden="true">&#10003;</span>
                 <span>{doc}</span>
               </li>
             ))}
@@ -185,37 +184,38 @@ export default function SchemeDetails() {
         </section>
 
         {/* Section 5: Application Procedure */}
-        <section className="details-section">
-          <h2 className="details-section-title">Application Procedure</h2>
-          <p style={{ fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--text-main)' }}>
+        <section className="details-card-section">
+          <h2 className="details-heading">Application Procedure</h2>
+          <p className="details-body-text">
             {scheme.application_process || 'Applications must be submitted through the authoritative official government portal or registered Common Service Centres (CSCs).'}
           </p>
         </section>
 
         {/* Authoritative Portal Notice */}
-        <div className="official-portal-callout" role="note">
-          <h4>Authoritative Source Notice</h4>
-          <p>
+        <div className="authoritative-source-callout" role="note">
+          <h4 className="callout-heading">Authoritative Portal Notice</h4>
+          <p className="callout-desc">
             This portal is an independent civic information system. Official scheme notifications, rules, guidelines,
             and actual application submissions are managed solely by the designated government department.
           </p>
-          <a
-            href={scheme.official_portal_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-primary"
-            style={{ display: 'inline-flex' }}
-          >
-            Visit Official Portal ({new URL(scheme.official_portal_url).hostname}) &nearr;
-          </a>
+          {scheme.official_portal_url && (
+            <a
+              href={scheme.official_portal_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-official-external"
+            >
+              <span>Visit Official Government Portal </span>
+            </a>
+          )}
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-          <Link to="/eligibility" className="btn btn-accent">
+        <div className="details-actions-footer">
+          <Link to="/eligibility" className="btn-details-check">
             Check If You Are Eligible For This Scheme &rarr;
           </Link>
-          <Link to="/schemes" className="btn btn-secondary">
+          <Link to="/schemes" className="btn-details-browse">
             Browse More Schemes
           </Link>
         </div>

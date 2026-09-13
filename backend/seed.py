@@ -315,7 +315,7 @@ def seed_schemes():
             admin_hash = generate_password_hash("Admin@123")
             cursor.execute(
                 "INSERT INTO users (full_name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
-                ("Portal Administrator", "admin@civicportal.gov.in", admin_hash, "admin")
+                ("Portal Administrator", "admin@civicportal.gov.in", admin_hash, "ADMIN")
             )
 
         cursor.execute("SELECT COUNT(*) AS count FROM users WHERE email = %s", ("citizen@example.com",))
@@ -323,7 +323,7 @@ def seed_schemes():
             user_hash = generate_password_hash("Citizen@123")
             cursor.execute(
                 "INSERT INTO users (full_name, email, password_hash, role) VALUES (%s, %s, %s, %s)",
-                ("Ramesh Sharma", "citizen@example.com", user_hash, "citizen")
+                ("Ramesh Sharma", "citizen@example.com", user_hash, "USER")
             )
             citizen_id = cursor.lastrowid
             cursor.execute(
