@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.jpg';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -22,9 +23,7 @@ export default function Navbar() {
         <div className="civic-nav-container">
           {/* Brand Identity */}
           <Link to="/" className="civic-brand" title="Unified Civic Scheme & Eligibility Portal - Home">
-            <div className="civic-badge-in" aria-hidden="true">
-              <span>IN</span>
-            </div>
+            <img src={logo} alt="Portal Logo" className="civic-navbar-logo" />
             <span className="civic-brand-text">Unified Civic Scheme & Eligibility Portal</span>
           </Link>
 

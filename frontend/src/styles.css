@@ -98,6 +98,14 @@ body {
   flex-shrink: 0;
 }
 
+.civic-navbar-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
 .civic-badge-in {
   width: 36px;
   height: 36px;
