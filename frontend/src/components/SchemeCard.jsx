@@ -2,73 +2,98 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function SchemeCard({ scheme, customReason = null, isEligible = null }) {
-  const isCentral = !scheme.state_requirement || scheme.state_requirement === 'All';
+  // Determine category badge color class
+  const getCategoryClass = (category) => {
+    switch (category?.toLowerCase()) {
+      case 'education':
+        return 'cat-badge-blue';
+      case 'employment':
+        return 'cat-badge-green';
+      case 'healthcare':
+        return 'cat-badge-red';
+      case 'agriculture':
+        return 'cat-badge-emerald';
+      case 'housing':
+        return 'cat-badge-cyan';
+      case 'women & child':
+        return 'cat-badge-purple';
+      default:
+        return 'cat-badge-default';
+    }
+  };
+
+  // Helper for key benefit text
+  const getKeyBenefit = () => {
+    if (scheme.benefits) {
+      // If benefits is long, pick the first sentence or up to 60 characters
+      const firstSentence = scheme.benefits.split('.')[0];
+      return firstSentence.length > 70 ? firstSentence.slice(0, 67) + '...' : firstSentence;
+    }
+    if (scheme.income_limit) {
+      return `Financial support for families with income up to ₹${scheme.income_limit.toLocaleString('en-IN')}`;
+    }
+    return 'Financial and welfare assistance as notified by the government';
+  };
 
   return (
-    <article className="scheme-card" aria-labelledby={`scheme-heading-${scheme.id}`}>
-      <div className="scheme-card-header">
-        <div className="scheme-badges-row">
-          <span className="badge badge-category">{scheme.category}</span>
-          <span className={`badge ${isCentral ? 'badge-scope-central' : 'badge-scope-state'}`}>
-            {isCentral ? 'Central Scheme' : `State: ${scheme.state_requirement}`}
+    <article className="featured-scheme-card" aria-labelledby={`scheme-card-${scheme.id}`}>
+      {/* Top Row: Category badge + Top-Right Arrow */}
+      <div className="scheme-card-top-row">
+        <div className="card-badge-row">
+          <span className={`scheme-category-pill ${getCategoryClass(scheme.category)}`}>
+            {scheme.category}
           </span>
           {isEligible !== null && (
-            <span className={`badge ${isEligible ? 'badge-eligible' : 'badge-not-eligible'}`}>
+            <span className={`scheme-eligibility-pill ${isEligible ? 'badge-is-eligible' : 'badge-is-unmet'}`}>
               {isEligible ? 'Eligible' : 'Not Eligible'}
             </span>
           )}
         </div>
-        <h3 id={`scheme-heading-${scheme.id}`} className="scheme-title">
-          {scheme.name}
-        </h3>
+        <Link to={`/schemes/${scheme.id}`} className="card-top-arrow" aria-label={`View ${scheme.name}`}>
+          &rarr;
+        </Link>
       </div>
 
-      <div className="scheme-card-body">
-        <p className="scheme-desc">{scheme.description}</p>
+      {/* Scheme Name */}
+      <h3 id={`scheme-card-${scheme.id}`} className="card-scheme-name">
+        <Link to={`/schemes/${scheme.id}`} className="card-scheme-name-link">
+          {scheme.name}
+        </Link>
+      </h3>
 
-        {customReason && (
-          <div className="eligibility-reason-box">
-            <span className={isEligible ? 'reason-tag-matched' : 'reason-tag-unmet'}>
-              {isEligible ? 'Criteria Met: ' : 'Reason: '}
-            </span>
-            {customReason}
-          </div>
-        )}
+      {/* Description */}
+      <p className="card-scheme-description">
+        {scheme.description}
+      </p>
 
-        <div className="scheme-criteria-chips">
-          {(scheme.age_min > 0 || scheme.age_max < 100) && (
-            <span className="chip">Age: {scheme.age_min} - {scheme.age_max} yrs</span>
-          )}
-          {scheme.income_limit && (
-            <span className="chip">Max Income: ₹{(scheme.income_limit).toLocaleString('en-IN')}</span>
-          )}
-          {scheme.gender && scheme.gender !== 'All' && (
-            <span className="chip">Gender: {scheme.gender}</span>
-          )}
-          {scheme.farmer_requirement ? (
-            <span className="chip" style={{ borderColor: '#86EFAC', backgroundColor: '#F0FDF4' }}>
-              Farmers Only
-            </span>
-          ) : null}
-          {scheme.student_requirement ? (
-            <span className="chip" style={{ borderColor: '#BFDBFE', backgroundColor: '#EFF6FF' }}>
-              Students Only
-            </span>
-          ) : null}
-          {scheme.disability_requirement ? (
-            <span className="chip" style={{ borderColor: '#FED7AA', backgroundColor: '#FFF7ED' }}>
-              PwD Only
-            </span>
-          ) : null}
+      {/* Reason Box (When checked in Eligibility Checker) */}
+      {customReason && (
+        <div className={`card-reason-notice ${isEligible ? 'reason-box-pass' : 'reason-box-fail'}`}>
+          <span className="reason-bold-label">
+            {isEligible ? 'Requirement Met: ' : 'Unmet Criteria: '}
+          </span>
+          <span>{customReason}</span>
+        </div>
+      )}
+
+      {/* Key Benefit Highlight Box */}
+      <div className="card-key-benefit-box">
+        <div className="benefit-icon-circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </div>
+        <div className="benefit-text-wrap">
+          <span className="benefit-bold-tag">Key benefit: </span>
+          <span className="benefit-content">{getKeyBenefit()}</span>
         </div>
       </div>
 
-      <div className="scheme-card-footer">
-        <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>
-          Deadline: <strong>{scheme.deadline || 'Ongoing'}</strong>
-        </span>
-        <Link to={`/schemes/${scheme.id}`} className="btn btn-primary">
-          View Details &rarr;
+      {/* Footer Link */}
+      <div className="card-footer-action">
+        <Link to={`/schemes/${scheme.id}`} className="card-view-details-link">
+          View details &rarr;
         </Link>
       </div>
     </article>

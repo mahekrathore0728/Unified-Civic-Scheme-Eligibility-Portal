@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import SearchBar from '../components/SearchBar';
 import SchemeCard from '../components/SchemeCard';
-import { fetchSchemes, fetchCategories } from '../services/api';
+import { fetchSchemes } from '../services/api';
 
 const INDIAN_STATES = [
   'All',
+  'Central (All India)',
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
   'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
   'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
@@ -14,193 +14,233 @@ const INDIAN_STATES = [
   'Delhi', 'Jammu & Kashmir', 'Ladakh'
 ];
 
+const CATEGORY_PILLS = [
+  'All',
+  'Education',
+  'Agriculture',
+  'Healthcare',
+  'Housing',
+  'Employment',
+  'Women & Child'
+];
+
 export default function Schemes() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlQuery = searchParams.get('q') || '';
+  const initialQ = searchParams.get('q') || '';
+  const initialCategory = searchParams.get('category') || 'All';
+  const initialState = searchParams.get('state') || 'All';
 
   const [schemes, setSchemes] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [search, setSearch] = useState(urlQuery);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedScope, setSelectedScope] = useState('All');
-  const [selectedState, setSelectedState] = useState('All');
+  const [searchTerm, setSearchTerm] = useState(initialQ);
+  const [activeSearch, setActiveSearch] = useState(initialQ);
+  const [selectedState, setSelectedState] = useState(initialState);
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
 
-  // Fetch categories on mount
+  // Sync state if URL search params change
   useEffect(() => {
-    async function loadCategories() {
-      try {
-        const res = await fetchCategories();
-        if (res.success && res.data) {
-          setCategories(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to load categories:', err);
-      }
-    }
-    loadCategories();
-  }, []);
+    const qParam = searchParams.get('q') || '';
+    const catParam = searchParams.get('category') || 'All';
+    const stateParam = searchParams.get('state') || 'All';
 
-  // Sync state if URL search param changes
-  useEffect(() => {
-    if (urlQuery !== search) {
-      setSearch(urlQuery);
-    }
-  }, [urlQuery]);
+    setSearchTerm(qParam);
+    setActiveSearch(qParam);
+    setSelectedCategory(catParam);
+    setSelectedState(stateParam);
+  }, [searchParams]);
 
-  // Fetch schemes whenever filters change
+  // Fetch schemes from database
   useEffect(() => {
     async function loadSchemes() {
       try {
         setLoading(true);
         setError(null);
+
+        let apiState = selectedState;
+        let apiScope = 'All';
+        if (selectedState === 'Central (All India)') {
+          apiScope = 'Central';
+          apiState = 'All';
+        } else if (selectedState !== 'All') {
+          apiScope = 'State';
+          apiState = selectedState;
+        }
+
         const res = await fetchSchemes({
-          q: search,
+          q: activeSearch,
           category: selectedCategory,
-          scope: selectedScope,
-          state: selectedState
+          scope: apiScope,
+          state: apiState
         });
+
         if (res.success && res.data) {
           setSchemes(res.data);
+        } else {
+          setError('Unable to load schemes from the database.');
         }
       } catch (err) {
         console.error('Failed to load schemes:', err);
-        setError('Could not connect to the schemes API. Please ensure the Flask backend is running.');
+        setError('Unable to load schemes from the database.');
       } finally {
         setLoading(false);
       }
     }
-    loadSchemes();
-  }, [search, selectedCategory, selectedScope, selectedState]);
 
-  const handleSearchSubmit = (term) => {
-    setSearch(term);
-    if (term) {
-      setSearchParams({ q: term });
-    } else {
-      setSearchParams({});
-    }
+    loadSchemes();
+  }, [activeSearch, selectedCategory, selectedState]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setActiveSearch(searchTerm);
+    updateUrlParams(searchTerm, selectedCategory, selectedState);
   };
 
-  const handleResetFilters = () => {
-    setSearch('');
+  const handleStateChange = (e) => {
+    const newState = e.target.value;
+    setSelectedState(newState);
+    updateUrlParams(activeSearch, selectedCategory, newState);
+  };
+
+  const handleCategorySelect = (cat) => {
+    setSelectedCategory(cat);
+    updateUrlParams(activeSearch, cat, selectedState);
+  };
+
+  const handleReset = () => {
+    setSearchTerm('');
+    setActiveSearch('');
     setSelectedCategory('All');
-    setSelectedScope('All');
     setSelectedState('All');
     setSearchParams({});
   };
 
+  const updateUrlParams = (q, cat, st) => {
+    const params = {};
+    if (q) params.q = q;
+    if (cat && cat !== 'All') params.category = cat;
+    if (st && st !== 'All') params.state = st;
+    setSearchParams(params);
+  };
+
   return (
-    <div className="schemes-page">
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: 'var(--primary-navy)', fontSize: '2rem', fontWeight: 700, marginBottom: '6px' }}>
-          Government Welfare Schemes Catalog
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Discover Central and State government welfare schemes, subsidy programs, and citizen entitlements.
+    <div className="schemes-page-view">
+      {/* Page Header */}
+      <div className="schemes-header-section">
+        <div className="section-tag-row">
+          
+          <h1 className="schemes-main-title">Explore Government Schemes</h1>
+        </div>
+        <p className="schemes-sub-desc">
+          Discover central and state government welfare schemes, subsidy programs, and citizen entitlements.
         </p>
       </div>
 
-      {/* Search Bar */}
-      <SearchBar
-        initialValue={search}
-        onSearch={handleSearchSubmit}
-        placeholder="Search schemes by title, keywords, benefits..."
-      />
+      {/* Filter Toolbar Card */}
+      <div className="schemes-filter-box" role="search" aria-label="Schemes search and filters">
+        <form onSubmit={handleSearchSubmit} className="filter-first-row">
+          <div className="search-field-col">
+            <svg
+              className="search-field-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              className="schemes-text-input"
+              placeholder="Search schemes by name, keyword, or benefits..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-      {/* Filter Toolbar */}
-      <div className="filter-bar" role="region" aria-label="Scheme filters">
-        <div className="filter-group">
-          <label htmlFor="category-select" className="filter-label">Sector / Category:</label>
-          <select
-            id="category-select"
-            className="filter-select"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="All">All Categories ({categories.reduce((acc, c) => acc + c.count, 0) || 'All'})</option>
-            {categories.map((cat) => (
-              <option key={cat.category} value={cat.category}>
-                {cat.category} ({cat.count})
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="state-select-col">
+            <select
+              className="schemes-dropdown-select"
+              value={selectedState}
+              onChange={handleStateChange}
+              aria-label="Filter by state or central"
+            >
+              <option value="All">All States</option>
+              {INDIAN_STATES.filter((s) => s !== 'All').map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label htmlFor="scope-select" className="filter-label">Scheme Jurisdiction:</label>
-          <select
-            id="scope-select"
-            className="filter-select"
-            value={selectedScope}
-            onChange={(e) => setSelectedScope(e.target.value)}
-          >
-            <option value="All">All Jurisdictions</option>
-            <option value="Central">Central Sector Schemes</option>
-            <option value="State">State Specific Schemes</option>
-          </select>
-        </div>
+          <button type="submit" className="btn-filter-search">
+            Search
+          </button>
 
-        <div className="filter-group">
-          <label htmlFor="state-select" className="filter-label">Target State:</label>
-          <select
-            id="state-select"
-            className="filter-select"
-            value={selectedState}
-            onChange={(e) => setSelectedState(e.target.value)}
-          >
-            {INDIAN_STATES.map((st) => (
-              <option key={st} value={st}>
-                {st === 'All' ? 'All States & UTs' : st}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {(search || selectedCategory !== 'All' || selectedScope !== 'All' || selectedState !== 'All') && (
           <button
             type="button"
-            className="btn btn-secondary"
-            onClick={handleResetFilters}
-            style={{ padding: '6px 14px', fontSize: '0.85rem', marginLeft: 'auto' }}
+            onClick={handleReset}
+            className="btn-filter-reset"
+            title="Reset all filters"
           >
-            Reset Filters
+            Reset
           </button>
-        )}
+        </form>
+
+        {/* Category Filter Pills */}
+        <div className="category-pills-row" role="group" aria-label="Category filter pills">
+          <span className="pills-title">Category:</span>
+          <div className="pills-list-wrapper">
+            {CATEGORY_PILLS.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`scheme-pill-item ${selectedCategory === cat ? 'active' : ''}`}
+                onClick={() => handleCategorySelect(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Results Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-        <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
-          Showing <strong>{schemes.length}</strong> active schemes in the database
-        </p>
-      </div>
+      {/* Error Alert */}
+      {error && (
+        <div className="civic-error-banner" style={{ marginTop: '16px' }}>
+          <svg className="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
 
-      {/* Content Grid */}
+      {/* Loading Indicator */}
       {loading ? (
-        <div className="loading-spinner-container">
-          <div className="spinner" role="status" aria-label="Loading schemes"></div>
-          <p style={{ color: 'var(--text-muted)' }}>Fetching schemes from database...</p>
+        <div className="civic-loader-container">
+          <div className="civic-spinner" role="status" aria-label="Loading schemes"></div>
+          <p className="civic-loader-text">Loading schemes from database...</p>
         </div>
-      ) : error ? (
-        <div className="empty-state">
-          <h3 className="empty-state-title">Connection Error</h3>
-          <p className="empty-state-desc">{error}</p>
-        </div>
-      ) : schemes.length === 0 ? (
-        <div className="empty-state">
-          <h3 className="empty-state-title">No matching schemes found</h3>
-          <p className="empty-state-desc">
-            We could not find any government schemes matching your current search criteria. Try adjusting your filters or keyword.
+      ) : !error && schemes.length === 0 ? (
+        <div className="empty-schemes-notice">
+          <h3 className="empty-title">No matching schemes found</h3>
+          <p className="empty-desc">
+            No government welfare schemes matched your search parameters. Try adjusting your keyword or selecting "All" categories.
           </p>
-          <button type="button" className="btn btn-primary" onClick={handleResetFilters}>
+          <button type="button" className="btn-filter-reset" onClick={handleReset}>
             Clear All Filters
           </button>
         </div>
       ) : (
-        <div className="schemes-grid">
+        <div className="schemes-card-catalog-grid">
           {schemes.map((scheme) => (
             <SchemeCard key={scheme.id} scheme={scheme} />
           ))}
