@@ -14,7 +14,7 @@ SAMPLE_SCHEMES = [
         "category": "Agriculture",
         "description": "Central Sector scheme providing income support of Rs 6,000 per year in three equal 4-monthly installments directly into the bank accounts of all landholding farmer families across the country.",
         "objective": "Supplement financial needs of small and marginal farmers in procuring various inputs to ensure proper crop health and appropriate yields, commensurate with anticipated farm income at the end of each crop cycle.",
-        "benefits": "Direct Benefit Transfer (DBT) of ₹6,000 per annum credited in three equal installments of ₹2,000 each.",
+        "benefits": "Direct Benefit Transfer (DBT) of ₹6,000 per annum credited in three equal installments of ₹2,000 each directly into bank accounts via Aadhaar linkage.",
         "eligibility_rules": "All landholding farmer families having cultivable landholding in their names. Institutional landholders and farmer families holding constitutional posts or paying income tax are excluded.",
         "age_min": 18,
         "age_max": 100,
@@ -238,7 +238,53 @@ SAMPLE_SCHEMES = [
         "official_portal_url": "https://www.nhfdc.nic.in",
         "deadline": "Ongoing",
         "status": "Active"
-    }
+    },
+    {
+        "name": "PM Vishwakarma Scheme",
+        "category": "Employment",
+        "description": "Central sector scheme providing end-to-end holistic support to traditional artisans and craftspeople engaged in 18 identified trades.",
+        "objective": "Strengthen and nurture traditional skills, improve quality and reach of artisans' products and services, and integrate them into domestic and global value chains.",
+        "benefits": "Collateral-free enterprise development loans up to ₹3,00,000 at concessional 5% interest rate, skill training stipend of ₹500/day, toolkit incentive of ₹15,000, and digital transaction incentives.",
+        "eligibility_rules": "Artisans and craftspeople working with hands and tools in one of 18 specified traditional trades, aged 18 or above. Limited to one member per family.",
+        "age_min": 18,
+        "age_max": 80,
+        "income_limit": 500000.0,
+        "gender": "All",
+        "occupation": "All",
+        "category_requirement": "All",
+        "state_requirement": "All",
+        "student_requirement": False,
+        "farmer_requirement": False,
+        "disability_requirement": False,
+        "required_documents": "Aadhaar Card, Active Mobile Number, Bank Account Passbook, Trade Skill Declaration",
+        "application_process": "Register online through Common Service Centres (CSCs) on pmvishwakarma.gov.in with three-stage verification.",
+        "official_portal_url": "https://pmvishwakarma.gov.in",
+        "deadline": "Ongoing",
+        "status": "Active"
+    },
+    {
+            "name": "PM Vishwakarma Scheme new",
+            "category": "Employment",
+            "description": "Central sector scheme providing end-to-end holistic support to traditional artisans and craftspeople engaged in 18 identified trades.",
+            "objective": "Strengthen and nurture traditional skills, improve quality and reach of artisans' products and services, and integrate them into domestic and global value chains.",
+            "benefits": "Collateral-free enterprise development loans up to ₹3,00,000 at concessional 5% interest rate, skill training stipend of ₹500/day, toolkit incentive of ₹15,000, and digital transaction incentives.",
+            "eligibility_rules": "Artisans and craftspeople working with hands and tools in one of 18 specified traditional trades, aged 18 or above. Limited to one member per family.",
+            "age_min": 18,
+            "age_max": 80,
+            "income_limit": 500000.0,
+            "gender": "All",
+            "occupation": "All",
+            "category_requirement": "All",
+            "state_requirement": "All",
+            "student_requirement": False,
+            "farmer_requirement": False,
+            "disability_requirement": False,
+            "required_documents": "Aadhaar Card, Active Mobile Number, Bank Account Passbook, Trade Skill Declaration",
+            "application_process": "Register online through Common Service Centres (CSCs) on pmvishwakarma.gov.in with three-stage verification.",
+            "official_portal_url": "https://pmvishwakarma.gov.in",
+            "deadline": "Ongoing",
+            "status": "Active"
+        }
 ]
 
 def init_database_tables():
@@ -273,15 +319,23 @@ def init_database_tables():
         conn.close()
 
 def seed_schemes():
-    """Seed sample schemes if the table is empty."""
+    """Seed or update sample schemes dynamically in MySQL."""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT COUNT(*) AS count FROM schemes")
-        row = cursor.fetchone()
-        if row and row['count'] > 0:
-            print(f"[Seed] Schemes table already contains {row['count']} schemes. Skipping seed.")
-            return
+        check_sql = "SELECT id FROM schemes WHERE name = %s"
+
+        update_sql = """
+            UPDATE schemes SET
+                category = %s, description = %s, objective = %s, benefits = %s,
+                eligibility_rules = %s, age_min = %s, age_max = %s, income_limit = %s,
+                gender = %s, occupation = %s, category_requirement = %s,
+                state_requirement = %s, student_requirement = %s, farmer_requirement = %s,
+                disability_requirement = %s, required_documents = %s,
+                application_process = %s, official_portal_url = %s, deadline = %s,
+                status = %s
+            WHERE id = %s
+        """
 
         insert_sql = """
             INSERT INTO schemes (
@@ -298,16 +352,42 @@ def seed_schemes():
             )
         """
 
+        inserted_count = 0
+        updated_count = 0
+
         for s in SAMPLE_SCHEMES:
-            cursor.execute(insert_sql, (
-                s["name"], s["category"], s["description"], s["objective"], s["benefits"], s["eligibility_rules"],
-                s["age_min"], s["age_max"], s["income_limit"], s["gender"], s["occupation"],
-                s["category_requirement"], s["state_requirement"], s["student_requirement"],
-                s["farmer_requirement"], s["disability_requirement"], s["required_documents"],
-                s["application_process"], s["official_portal_url"], s["deadline"], s["status"]
-            ))
+            cursor.execute(check_sql, (s["name"],))
+            existing = cursor.fetchone()
+
+            if existing:
+                existing_id = existing["id"]
+                cursor.execute(update_sql, (
+                    s["category"], s["description"], s["objective"], s["benefits"],
+                    s["eligibility_rules"], s["age_min"], s["age_max"], s["income_limit"],
+                    s["gender"], s["occupation"], s["category_requirement"],
+                    s["state_requirement"], s["student_requirement"], s["farmer_requirement"],
+                    s["disability_requirement"], s["required_documents"],
+                    s["application_process"], s["official_portal_url"], s["deadline"],
+                    s["status"], existing_id
+                ))
+                updated_count += 1
+                print(f"[Seed] Updated existing scheme (ID {existing_id}): {s['name']}")
+            else:
+                cursor.execute(insert_sql, (
+                    s["name"], s["category"], s["description"], s["objective"], s["benefits"],
+                    s["eligibility_rules"], s["age_min"], s["age_max"], s["income_limit"],
+                    s["gender"], s["occupation"], s["category_requirement"],
+                    s["state_requirement"], s["student_requirement"], s["farmer_requirement"],
+                    s["disability_requirement"], s["required_documents"],
+                    s["application_process"], s["official_portal_url"], s["deadline"],
+                    s["status"]
+                ))
+                inserted_count += 1
+                new_id = cursor.lastrowid
+                print(f"[Seed] Inserted new scheme (ID {new_id}): {s['name']}")
+
         conn.commit()
-        print(f"[Seed] Successfully seeded {len(SAMPLE_SCHEMES)} realistic government welfare schemes.")
+        print(f"[Seed] Schemes sync completed. Total in sample: {len(SAMPLE_SCHEMES)} | Inserted: {inserted_count} | Updated: {updated_count}")
 
         # Seed sample demo users (one admin, one citizen)
         cursor.execute("SELECT COUNT(*) AS count FROM users WHERE email = %s", ("admin@civicportal.gov.in",))
@@ -332,7 +412,7 @@ def seed_schemes():
                 (citizen_id, 34, "Male", "Maharashtra", 180000.0, "Farmer", "OBC", False, True, False)
             )
         conn.commit()
-        print("[Seed] Successfully created demo admin and citizen records.")
+        print("[Seed] Successfully ensured demo admin and citizen records exist.")
     finally:
         cursor.close()
         conn.close()
