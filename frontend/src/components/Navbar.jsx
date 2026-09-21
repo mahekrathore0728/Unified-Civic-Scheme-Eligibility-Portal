@@ -21,20 +21,28 @@ export default function Navbar() {
     <header className="civic-header-wrapper">
       <nav className="civic-navbar" role="navigation" aria-label="Main Navigation">
         <div className="civic-nav-inner">
-          {/* Brand Logo & Name */}
-          <Link to="/" className="civic-brand-link" title="Unified Civic Scheme & Eligibility Portal">
+
+          <Link
+            to="/"
+            className="civic-brand-link"
+            title="Unified Civic Scheme & Eligibility Portal"
+          >
             <img
               src={logoImg}
               alt="Portal Logo"
               className="civic-portal-logo"
             />
+
             <div className="civic-brand-name-group">
-              <span className="brand-name-primary">Unified Civic Scheme &amp;</span>
-              <span className="brand-name-secondary">Eligibility Portal</span>
+              <span className="brand-name-primary">
+                Unified Civic Scheme &amp;
+              </span>
+              <span className="brand-name-secondary">
+                Eligibility Portal
+              </span>
             </div>
           </Link>
 
-          {/* Center Navigation Links */}
           <ul className="civic-center-nav">
             <li>
               <NavLink
@@ -47,6 +55,7 @@ export default function Navbar() {
                 Home
               </NavLink>
             </li>
+
             <li>
               <NavLink
                 to="/schemes"
@@ -57,6 +66,7 @@ export default function Navbar() {
                 Schemes
               </NavLink>
             </li>
+
             <li>
               <NavLink
                 to="/eligibility"
@@ -69,10 +79,18 @@ export default function Navbar() {
             </li>
           </ul>
 
-          {/* Right Actions: Login / Register or Profile / Logout */}
           <div className="civic-right-actions">
             {isAuthenticated ? (
               <div className="user-nav-actions">
+
+                <NavLink
+                  to="/saved"
+                  className="user-profile-btn"
+                  title="View saved schemes"
+                >
+                  <span>Saved Schemes</span>
+                </NavLink>
+
                 <NavLink
                   to="/profile"
                   className="user-profile-btn"
@@ -91,8 +109,12 @@ export default function Navbar() {
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
-                  <span>{getFirstName(user?.full_name)} (Profile)</span>
+
+                  <span>
+                    {getFirstName(user?.full_name)} (Profile)
+                  </span>
                 </NavLink>
+
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -101,9 +123,11 @@ export default function Navbar() {
                 >
                   Logout
                 </button>
+
               </div>
             ) : (
               <div className="auth-nav-actions">
+
                 <Link to="/login" className="btn-nav-login">
                   <svg
                     className="login-icon"
@@ -118,14 +142,18 @@ export default function Navbar() {
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
+
                   <span>Login</span>
                 </Link>
+
                 <Link to="/signup" className="btn-nav-register">
                   Register
                 </Link>
+
               </div>
             )}
           </div>
+
         </div>
       </nav>
     </header>

@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchSchemeById } from '../services/api';
+import {
+  fetchSchemeById,
+  fetchSavedSchemes,
+  saveScheme,
+  removeSavedScheme
+} from '../services/api';
 
 export default function SchemeDetails() {
   const { id } = useParams();
   const [scheme, setScheme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
     async function loadScheme() {
@@ -15,10 +23,27 @@ export default function SchemeDetails() {
         setError(null);
         const res = await fetchSchemeById(id);
         if (res.success && res.data) {
-          setScheme(res.data);
-        } else {
-          setError(res.message || 'Scheme not found');
-        }
+  setScheme(res.data);
+
+  const token = localStorage.getItem('civic_portal_token');
+  if (token) {
+    try {
+      const savedRes = await fetchSavedSchemes(token);
+
+      if (savedRes.success && Array.isArray(savedRes.data)) {
+        const alreadySaved = savedRes.data.some(
+          (savedScheme) => Number(savedScheme.id) === Number(res.data.id)
+        );
+
+        setIsSaved(alreadySaved);
+      }
+    } catch (savedErr) {
+      console.error('Failed to check saved scheme status:', savedErr);
+    }
+  }
+} else {
+  setError(res.message || 'Scheme not found');
+}
       } catch (err) {
         console.error('Failed to load scheme details:', err);
         setError('Unable to load scheme details. Please check if the backend server is running.');
@@ -28,6 +53,45 @@ export default function SchemeDetails() {
     }
     loadScheme();
   }, [id]);
+
+    async function handleSaveToggle() {
+    const token = localStorage.getItem('civic_portal_token');
+
+    if (!token) {
+      setSaveMessage('Please login to save schemes.');
+      return;
+    }
+
+    try {
+      setSaveLoading(true);
+      setSaveMessage('');
+
+      if (isSaved) {
+        const res = await removeSavedScheme(scheme.id, token);
+
+        if (res.success) {
+          setIsSaved(false);
+          setSaveMessage('Scheme removed from saved schemes.');
+        } else {
+          setSaveMessage(res.message || 'Unable to remove scheme.');
+        }
+      } else {
+        const res = await saveScheme(scheme.id, token);
+
+        if (res.success) {
+          setIsSaved(true);
+          setSaveMessage('Scheme saved successfully.');
+        } else {
+          setSaveMessage(res.message || 'Unable to save scheme.');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update saved scheme:', err);
+      setSaveMessage(err.message || 'Unable to update saved scheme.');
+    } finally {
+      setSaveLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -204,20 +268,49 @@ export default function SchemeDetails() {
               rel="noopener noreferrer"
               className="btn-visit-portal"
             >
-              <span>Visit Official Portal &nearr;</span>
+              <span>Visit Official Portal </span>
             </a>
           )}
         </div>
 
-        {/* Action Buttons */}
+                {/* Action Buttons */}
         <div className="details-actions-bar">
-          <Link to="/eligibility" className="btn-action-check-eligibility">
-            Check Your Eligibility For This Scheme &rarr;
+          <Link
+            to="/eligibility"
+            className="btn-action-check-eligibility"
+          >
+            Check Your Eligibility For This Scheme
           </Link>
-          <Link to="/schemes" className="btn-action-browse-more">
+
+          <button
+            type="button"
+            onClick={handleSaveToggle}
+            disabled={saveLoading}
+            className={`btn-action-save-scheme ${isSaved ? 'saved' : ''}`}
+          >
+            {saveLoading
+              ? 'Saving...'
+              : isSaved
+                ? '✓ Saved Scheme'
+                : '☆ Save Scheme'}
+          </button>
+
+          <Link
+            to="/schemes"
+            className="btn-action-browse-more"
+          >
             Browse More Schemes
           </Link>
         </div>
+
+        {saveMessage && (
+          <p
+            className="save-scheme-message"
+            role="status"
+          >
+            {saveMessage}
+          </p>
+        )}
       </article>
     </div>
   );

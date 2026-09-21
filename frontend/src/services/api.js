@@ -152,3 +152,48 @@ export async function updateUserProfile(profileData, token) {
   return handleResponse(response);
 }
 
+/**
+ * Fetch all schemes saved by the authenticated user.
+ */
+export async function fetchSavedSchemes(token) {
+  const url = `${API_BASE_URL}/saved`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Save a scheme for the authenticated user.
+ */
+export async function saveScheme(schemeId, token) {
+  const url = `${API_BASE_URL}/saved`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      scheme_id: schemeId
+    })
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Remove a scheme from the authenticated user's saved schemes.
+ */
+export async function removeSavedScheme(schemeId, token) {
+  const url = `${API_BASE_URL}/saved/${schemeId}`;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+}

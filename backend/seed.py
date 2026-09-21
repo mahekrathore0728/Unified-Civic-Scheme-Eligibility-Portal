@@ -261,30 +261,8 @@ SAMPLE_SCHEMES = [
         "official_portal_url": "https://pmvishwakarma.gov.in",
         "deadline": "Ongoing",
         "status": "Active"
-    },
-    {
-            "name": "PM Vishwakarma Scheme new",
-            "category": "Employment",
-            "description": "Central sector scheme providing end-to-end holistic support to traditional artisans and craftspeople engaged in 18 identified trades.",
-            "objective": "Strengthen and nurture traditional skills, improve quality and reach of artisans' products and services, and integrate them into domestic and global value chains.",
-            "benefits": "Collateral-free enterprise development loans up to ₹3,00,000 at concessional 5% interest rate, skill training stipend of ₹500/day, toolkit incentive of ₹15,000, and digital transaction incentives.",
-            "eligibility_rules": "Artisans and craftspeople working with hands and tools in one of 18 specified traditional trades, aged 18 or above. Limited to one member per family.",
-            "age_min": 18,
-            "age_max": 80,
-            "income_limit": 500000.0,
-            "gender": "All",
-            "occupation": "All",
-            "category_requirement": "All",
-            "state_requirement": "All",
-            "student_requirement": False,
-            "farmer_requirement": False,
-            "disability_requirement": False,
-            "required_documents": "Aadhaar Card, Active Mobile Number, Bank Account Passbook, Trade Skill Declaration",
-            "application_process": "Register online through Common Service Centres (CSCs) on pmvishwakarma.gov.in with three-stage verification.",
-            "official_portal_url": "https://pmvishwakarma.gov.in",
-            "deadline": "Ongoing",
-            "status": "Active"
-        }
+    }
+
 ]
 
 def init_database_tables():
@@ -321,7 +299,7 @@ def init_database_tables():
 def seed_schemes():
     """Seed or update sample schemes dynamically in MySQL."""
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True )
     try:
         check_sql = "SELECT id FROM schemes WHERE name = %s"
 

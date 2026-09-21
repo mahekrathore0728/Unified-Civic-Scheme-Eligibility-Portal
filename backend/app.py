@@ -658,14 +658,198 @@ def update_profile(current_user):
         print(f"[API Error PUT /api/profile]: {err}")
         return api_response(False, "Failed to update user profile.", None, 500)
 
-@app.route("/api/saved", methods=["GET", "POST"])
+@app.route("/api/saved", methods=["GET"])
+@token_required
+def get_saved_schemes(current_user):
+    """Retrieve all schemes saved by the logged-in user."""
+    try:
+        user_id = current_user["user_id"]
+
+        sql = """
+            SELECT
+                s.id,
+                s.name,
+                s.category,
+                s.description,
+                s.objective,
+                s.benefits,
+                s.age_min,
+                s.age_max,
+                s.income_limit,
+                s.gender,
+                s.occupation,
+                s.category_requirement,
+                s.state_requirement,
+                s.student_requirement,
+                s.farmer_requirement,
+                s.disability_requirement,
+                s.required_documents,
+                s.application_process,
+                s.official_portal_url,
+                s.deadline,
+                s.status,
+                ss.saved_at
+            FROM saved_schemes ss
+            INNER JOIN schemes s ON ss.scheme_id = s.id
+            WHERE ss.user_id = %s
+            ORDER BY ss.saved_at DESC
+        """
+
+        saved = query_all(sql, (user_id,))
+
+        formatted_saved = []
+
+        for scheme in saved:
+            scheme_data = dict(scheme)
+
+            if scheme_data.get("income_limit") is not None:
+                scheme_data["income_limit"] = float(
+                    scheme_data["income_limit"]
+                )
+
+            if scheme_data.get("saved_at"):
+                scheme_data["saved_at"] = str(
+                    scheme_data["saved_at"]
+                )
+
+            formatted_saved.append(scheme_data)
+
+        return api_response(
+            True,
+            f"Retrieved {len(formatted_saved)} saved schemes.",
+            formatted_saved
+        )
+
+    except Exception as err:
+        print(f"[API Error GET /api/saved]: {err}")
+        return api_response(
+            False,
+            "Failed to retrieve saved schemes.",
+            None,
+            500
+        )
+
+
+@app.route("/api/saved", methods=["POST"])
+@token_required
+def save_scheme(current_user):
+    """Save a scheme for the logged-in user."""
+    try:
+        user_id = current_user["user_id"]
+        data = request.get_json() or {}
+        scheme_id = data.get("scheme_id")
+
+        if not scheme_id:
+            return api_response(
+                False,
+                "Scheme ID is required.",
+                None,
+                400
+            )
+
+        # Check whether scheme exists
+        scheme = query_one(
+            "SELECT id FROM schemes WHERE id = %s",
+            (scheme_id,)
+        )
+
+        if not scheme:
+            return api_response(
+                False,
+                "Scheme not found.",
+                None,
+                404
+            )
+
+        # Check whether already saved
+        existing = query_one(
+            """
+            SELECT id
+            FROM saved_schemes
+            WHERE user_id = %s AND scheme_id = %s
+            """,
+            (user_id, scheme_id)
+        )
+
+        if existing:
+            return api_response(
+                False,
+                "Scheme is already saved.",
+                None,
+                409
+            )
+
+        execute_db(
+            """
+            INSERT INTO saved_schemes (user_id, scheme_id)
+            VALUES (%s, %s)
+            """,
+            (user_id, scheme_id)
+        )
+
+        return api_response(
+            True,
+            "Scheme saved successfully.",
+            {"scheme_id": scheme_id},
+            201
+        )
+
+    except Exception as err:
+        print(f"[API Error POST /api/saved]: {err}")
+        return api_response(
+            False,
+            "Failed to save scheme.",
+            None,
+            500
+        )
+
+
 @app.route("/api/saved/<int:scheme_id>", methods=["DELETE"])
-def saved_placeholder(scheme_id=None):
-    """Modular placeholder for Phase 2 bookmarking."""
-    return api_response(True, "Saved schemes feature is configured for Phase 2.", {
-        "phase": 2,
-        "feature": "Bookmark & Saved Schemes"
-    })
+@token_required
+def remove_saved_scheme(current_user, scheme_id):
+    """Remove a saved scheme for the logged-in user."""
+    try:
+        user_id = current_user["user_id"]
+
+        existing = query_one(
+            """
+            SELECT id
+            FROM saved_schemes
+            WHERE user_id = %s AND scheme_id = %s
+            """,
+            (user_id, scheme_id)
+        )
+
+        if not existing:
+            return api_response(
+                False,
+                "Scheme is not saved.",
+                None,
+                404
+            )
+
+        execute_db(
+            """
+            DELETE FROM saved_schemes
+            WHERE user_id = %s AND scheme_id = %s
+            """,
+            (user_id, scheme_id)
+        )
+
+        return api_response(
+            True,
+            "Scheme removed from saved schemes.",
+            {"scheme_id": scheme_id}
+        )
+
+    except Exception as err:
+        print(f"[API Error DELETE /api/saved/<id>]: {err}")
+        return api_response(
+            False,
+            "Failed to remove saved scheme.",
+            None,
+            500
+        )
 
 @app.route("/api/applications", methods=["GET", "POST"])
 @app.route("/api/applications/<int:app_id>", methods=["GET", "PUT"])
