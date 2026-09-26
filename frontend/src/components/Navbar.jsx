@@ -77,11 +77,30 @@ export default function Navbar() {
                 Eligibility
               </NavLink>
             </li>
+
+            <li>
+              <NavLink
+                to="/documents"
+                className={({ isActive }) =>
+                  isActive ? 'civic-nav-link active' : 'civic-nav-link'
+                }
+              >
+                Documents
+              </NavLink>
+            </li>
           </ul>
 
           <div className="civic-right-actions">
             {isAuthenticated ? (
               <div className="user-nav-actions">
+
+                <NavLink
+                  to="/applications"
+                  className="user-profile-btn"
+                  title="View my applications"
+                >
+                  <span>Applications</span>
+                </NavLink>
 
                 <NavLink
                   to="/saved"

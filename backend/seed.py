@@ -265,6 +265,59 @@ SAMPLE_SCHEMES = [
 
 ]
 
+# Scheme required document type mapping
+# Keys must match scheme names in SAMPLE_SCHEMES exactly
+SCHEME_REQUIRED_DOCS = {
+    "PM-KISAN (Pradhan Mantri Kisan Samman Nidhi)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+    ],
+    "Ayushman Bharat - PMJAY (Pradhan Mantri Jan Arogya Yojana)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+    ],
+    "Pradhan Mantri Awas Yojana - Urban (PMAY-U)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+        {"doc_type": "income_certificate", "is_mandatory": True, "display_label": "Income Certificate"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+    ],
+    "Sukanya Samriddhi Yojana (SSY)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+    ],
+    "National Means-cum-Merit Scholarship Scheme (NMMSS)": [
+        {"doc_type": "marksheet_10th", "is_mandatory": True, "display_label": "10th Marksheet"},
+        {"doc_type": "income_certificate", "is_mandatory": True, "display_label": "Income Certificate"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+        {"doc_type": "aadhaar", "is_mandatory": False, "display_label": "Aadhaar / Identity Proof"},
+    ],
+    "PM SVANidhi (PM Street Vendor's AtmaNirbhar Nidhi)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+    ],
+    "Pradhan Mantri Mudra Yojana (PMMY)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+    ],
+    "Post Matric Scholarship for SC Students": [
+        {"doc_type": "caste_certificate", "is_mandatory": True, "display_label": "Caste Certificate"},
+        {"doc_type": "income_certificate", "is_mandatory": True, "display_label": "Income Certificate"},
+        {"doc_type": "marksheet_10th", "is_mandatory": True, "display_label": "10th Marksheet"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+        {"doc_type": "aadhaar", "is_mandatory": False, "display_label": "Aadhaar / Identity Proof"},
+    ],
+    "Indira Gandhi National Old Age Pension Scheme (IGNOAPS)": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+    ],
+    "Divyangjan Swavalamban Yojana": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+    ],
+    "PM Vishwakarma Scheme": [
+        {"doc_type": "aadhaar", "is_mandatory": True, "display_label": "Aadhaar / Identity Proof"},
+        {"doc_type": "bank_passbook", "is_mandatory": True, "display_label": "Bank Passbook"},
+    ],
+}
+
+
 def init_database_tables():
     """Execute schema.sql to ensure database and tables are created."""
     config = get_db_config()
@@ -296,10 +349,48 @@ def init_database_tables():
         cursor.close()
         conn.close()
 
+
+def run_migration():
+    """Run the document management migration SQL."""
+    config = get_db_config()
+    migration_path = Path(__file__).resolve().parent / 'migrations' / 'add_document_tables.sql'
+    if not migration_path.exists():
+        print(f"[Migration] Migration file not found: {migration_path}")
+        return False
+
+    with open(migration_path, 'r', encoding='utf-8') as f:
+        migration_sql = f.read()
+
+    conn = mysql.connector.connect(
+        host=config['host'],
+        port=config['port'],
+        user=config['user'],
+        password=config['password'],
+        database=config['database']
+    )
+    cursor = conn.cursor()
+    try:
+        statements = [stmt.strip() for stmt in migration_sql.split(';') if stmt.strip() and not stmt.strip().startswith('--')]
+        for statement in statements:
+            if statement.upper().startswith('USE') or statement.upper().startswith('--'):
+                continue
+            try:
+                cursor.execute(statement)
+                print(f"[Migration] OK: {statement[:80]}...")
+            except Exception as e:
+                print(f"[Migration] Note: {e} (may already exist)")
+        conn.commit()
+        print("[Migration] Document management migration completed.")
+        return True
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def seed_schemes():
     """Seed or update sample schemes dynamically in MySQL."""
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True )
+    cursor = conn.cursor(dictionary=True)
     try:
         check_sql = "SELECT id FROM schemes WHERE name = %s"
 
@@ -332,6 +423,7 @@ def seed_schemes():
 
         inserted_count = 0
         updated_count = 0
+        scheme_id_map = {}  # name -> id
 
         for s in SAMPLE_SCHEMES:
             cursor.execute(check_sql, (s["name"],))
@@ -349,6 +441,7 @@ def seed_schemes():
                     s["status"], existing_id
                 ))
                 updated_count += 1
+                scheme_id_map[s["name"]] = existing_id
                 print(f"[Seed] Updated existing scheme (ID {existing_id}): {s['name']}")
             else:
                 cursor.execute(insert_sql, (
@@ -362,10 +455,47 @@ def seed_schemes():
                 ))
                 inserted_count += 1
                 new_id = cursor.lastrowid
+                scheme_id_map[s["name"]] = new_id
                 print(f"[Seed] Inserted new scheme (ID {new_id}): {s['name']}")
 
         conn.commit()
-        print(f"[Seed] Schemes sync completed. Total in sample: {len(SAMPLE_SCHEMES)} | Inserted: {inserted_count} | Updated: {updated_count}")
+        print(f"[Seed] Schemes sync completed. Total: {len(SAMPLE_SCHEMES)} | Inserted: {inserted_count} | Updated: {updated_count}")
+
+        # Seed scheme required doc types
+        print("[Seed] Seeding scheme required document types...")
+        for scheme_name, doc_list in SCHEME_REQUIRED_DOCS.items():
+            scheme_id = scheme_id_map.get(scheme_name)
+            if not scheme_id:
+                # Try to fetch from DB if not in map
+                cursor.execute("SELECT id FROM schemes WHERE name = %s", (scheme_name,))
+                row = cursor.fetchone()
+                if row:
+                    scheme_id = row["id"]
+                else:
+                    print(f"[Seed] Warning: Scheme not found for doc mapping: {scheme_name}")
+                    continue
+
+            for doc_entry in doc_list:
+                # Use INSERT IGNORE or check existence
+                cursor.execute(
+                    "SELECT id FROM scheme_required_doc_types WHERE scheme_id = %s AND doc_type = %s",
+                    (scheme_id, doc_entry["doc_type"])
+                )
+                exists = cursor.fetchone()
+                if not exists:
+                    cursor.execute(
+                        "INSERT INTO scheme_required_doc_types (scheme_id, doc_type, is_mandatory, display_label) VALUES (%s, %s, %s, %s)",
+                        (scheme_id, doc_entry["doc_type"], doc_entry["is_mandatory"], doc_entry["display_label"])
+                    )
+                    print(f"[Seed]   → Added doc type '{doc_entry['doc_type']}' for scheme ID {scheme_id}")
+                else:
+                    # Update in case mandatory/label changed
+                    cursor.execute(
+                        "UPDATE scheme_required_doc_types SET is_mandatory = %s, display_label = %s WHERE scheme_id = %s AND doc_type = %s",
+                        (doc_entry["is_mandatory"], doc_entry["display_label"], scheme_id, doc_entry["doc_type"])
+                    )
+        conn.commit()
+        print("[Seed] Scheme required doc types seeded.")
 
         # Seed sample demo users (one admin, one citizen)
         cursor.execute("SELECT COUNT(*) AS count FROM users WHERE email = %s", ("admin@civicportal.gov.in",))
@@ -395,8 +525,10 @@ def seed_schemes():
         cursor.close()
         conn.close()
 
+
 if __name__ == "__main__":
     print("Starting database schema initialization and seed process...")
     init_database_tables()
+    run_migration()
     seed_schemes()
     print("Seed complete.")

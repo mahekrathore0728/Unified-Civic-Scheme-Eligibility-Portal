@@ -12,6 +12,9 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import SavedSchemes from './pages/SavedSchemes';
+import Documents from './pages/Documents';
+import Applications from './pages/Applications';
+import ApplicationDetail from './pages/ApplicationDetail';
 
 export default function App() {
   return (
@@ -39,6 +42,30 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <SavedSchemes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <ProtectedRoute>
+                  <Documents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/applications"
+              element={
+                <ProtectedRoute>
+                  <Applications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/applications/:id"
+              element={
+                <ProtectedRoute>
+                  <ApplicationDetail />
                 </ProtectedRoute>
               }
             />

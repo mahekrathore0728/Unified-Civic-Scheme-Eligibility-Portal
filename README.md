@@ -22,9 +22,13 @@ This project centralizes welfare scheme discovery and assessment within one port
 - View detailed scheme information including objective, benefits, documents, and application guidance
 - Run a rule-based eligibility check using user profile data
 - Compare results into qualifying and non-qualifying scheme groups
-- Register, log in, and maintain a personal civic profile
+- Register, log in, and maintain a personal citizen profile
 - Access protected profile pages through authenticated routes
 - Review official portal links associated with each scheme
+- **Document Vault**: Upload, view, reprocess, and manage personal eligibility documents (Aadhaar, Marksheets, Income, Caste, Domicile, Bank Passbook)
+- **Document-Assisted Processing**: OCR & text extraction (PyMuPDF / pytesseract) parsing structured fields to assist eligibility checking
+- **Scheme-Specific Document Checklist**: Dynamic verification of mandatory vs optional documents for each scheme
+- **Application Readiness & Tracking Workflow**: Internal portal workflow tracking states from Draft to Submitted with mandatory document checks
 
 **How the System Works**
 

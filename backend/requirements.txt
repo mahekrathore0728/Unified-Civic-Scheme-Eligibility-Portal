@@ -3,3 +3,6 @@ flask-cors>=4.0.0
 mysql-connector-python>=8.0.33
 python-dotenv>=1.0.0
 Werkzeug>=3.0.0
+PyMuPDF>=1.23.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
