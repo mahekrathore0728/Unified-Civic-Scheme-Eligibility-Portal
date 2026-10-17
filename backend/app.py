@@ -238,7 +238,8 @@ def init_document_system():
             ("classification_confidence", "FLOAT DEFAULT 0.0"),
             ("classification_state", "VARCHAR(30) DEFAULT 'NEEDS_REVIEW'"),
             ("classification_reason", "TEXT DEFAULT NULL"),
-            ("ocr_quality", "VARCHAR(30) DEFAULT 'UNKNOWN'")
+            ("ocr_quality", "VARCHAR(30) DEFAULT 'UNKNOWN'"),
+            ("document_details", "JSON DEFAULT NULL")
         ]:
             try:
                 execute_db(f"ALTER TABLE `user_documents` ADD COLUMN `{col}` {col_def}")
@@ -781,19 +782,33 @@ def parse_extracted_fields(text: str, detected_doc_type: str) -> dict:
     text_lower = text.lower()
 
     # --- Common Name Extraction ---
+    INVALID_NAME_WORDS = {
+        'government', 'ministry', 'department', 'authority', 'office', 'board',
+        'secondary', 'education', 'examination', 'certificate', 'district',
+        'tehsildar', 'tahsildar', 'magistrate', 'bank', 'branch', 'india',
+        'corporation', 'commissioner', 'revenue', 'university', 'school',
+        'college', 'scheme', 'holder', 'candidate', 'applicant', 'student'
+    }
+
     name_patterns = [
-        r'(?:name\s*of\s*the\s*applicant|applicant\s*name|name\s*of\s*student|student\s*name|candidate\s*name|holder\s*name|name)\s*[:\-]\s*([A-Za-z\s\.]{3,60})',
+        r"(?:name\s*of\s*(?:the\s*)?(?:applicant|candidate|student|holder)|applicant\s*(?:'s)?(?:\s*name)?|candidate\s*(?:'s)?(?:\s*name)?|student\s*(?:'s)?(?:\s*name)?|holder\s*(?:'s)?(?:\s*name)?)\s*[:\-]\s*([A-Za-z\s\.]{3,60})",
         r'this\s+is\s+to\s+certify\s+that\s+(?:shri|smt|kumari|mr|ms|mrs)?\.?\s*([A-Za-z\s\.]{3,50})',
+        r"(?<!father's\s)(?<!mother's\s)(?<!husband's\s)(?<!guardian's\s)(?<!school\s)(?<!college\s)(?<!bank\s)(?<!scheme\s)\bname\s*[:\-]\s*([A-Za-z\s\.]{3,60})"
     ]
     for pattern in name_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
             candidate = match.group(1).split('\n')[0].strip()
-            # Clean common trailing artifacts
-            candidate = re.sub(r'^(?:shri|smt|kumari|mr|ms|mrs)\.?\s*', '', candidate, flags=re.IGNORECASE)
-            if 3 < len(candidate) < 60:
+            # Clean common trailing artifacts and prefixes
+            candidate = re.sub(r'^(?:shri|smt|kumari|mr|ms|mrs|dr)\.?\s*', '', candidate, flags=re.IGNORECASE).strip()
+            candidate = re.split(r'[,;|\/]', candidate)[0].strip()
+            cand_words = set(re.findall(r'[a-z]+', candidate.lower()))
+            if cand_words & INVALID_NAME_WORDS:
+                continue
+            if 3 <= len(candidate) <= 60 and not re.search(r'\d', candidate):
                 fields['name'] = candidate
                 break
+        if 'name' in fields:
+            break
 
     # --- Date of Birth ---
     dob_patterns = [
@@ -1238,8 +1253,10 @@ def get_schemes():
             params.extend([like_term, like_term, like_term, like_term])
 
         if category and category != "All":
+            # Normalize Healthcare -> Health for backward compatibility with existing bookmarks/links
+            target_category = "Health" if category.lower() in ("healthcare", "health") else category
             conditions.append("category = %s")
-            params.append(category)
+            params.append(target_category)
 
         if state and state != "All":
             conditions.append("(state_requirement = 'All' OR state_requirement = %s)")
@@ -2512,7 +2529,7 @@ def get_user_documents(current_user):
         user_id = current_user["user_id"]
         rows = query_all("""
             SELECT id, doc_type, original_filename, mime_type, file_size_bytes,
-                   status, extracted_data, processing_notes, uploaded_at, updated_at
+                   status, extracted_data, processing_notes, document_details, uploaded_at, updated_at
             FROM user_documents
             WHERE user_id = %s AND is_active = TRUE
             ORDER BY doc_type ASC, uploaded_at DESC
@@ -2524,6 +2541,7 @@ def get_user_documents(current_user):
             dt = row["doc_type"]
             if dt not in docs_by_type:
                 d = dict(row)
+                d["document_type"] = dt
                 d["uploaded_at"] = str(d["uploaded_at"]) if d["uploaded_at"] else None
                 d["updated_at"] = str(d["updated_at"]) if d["updated_at"] else None
                 d["file_size_kb"] = round(d["file_size_bytes"] / 1024, 1) if d["file_size_bytes"] else 0
@@ -2536,6 +2554,33 @@ def get_user_documents(current_user):
                         d["extracted_data"] = {}
                 else:
                     d["extracted_data"] = {}
+                # Parse document_details safely with sensitive field masking
+                raw_details = d.get("document_details")
+                if raw_details:
+                    try:
+                        if isinstance(raw_details, str):
+                            d["document_details"] = json.loads(raw_details)
+                        elif isinstance(raw_details, dict):
+                            d["document_details"] = raw_details
+                        else:
+                            d["document_details"] = {}
+                    except Exception:
+                        d["document_details"] = {}
+                else:
+                    d["document_details"] = {}
+
+                if isinstance(d.get("document_details"), dict):
+                    if d["document_details"].get("aadhaar_number"):
+                        an_str = str(d["document_details"]["aadhaar_number"]).strip()
+                        digits = re.sub(r'[\s\-]', '', an_str)
+                        if len(digits) >= 4:
+                            d["document_details"]["aadhaar_number"] = f"XXXX-XXXX-{digits[-4:]}"
+                    if d["document_details"].get("account_number"):
+                        acc_str = str(d["document_details"]["account_number"]).strip()
+                        digits = re.sub(r'[\s\-]', '', acc_str)
+                        if len(digits) >= 4:
+                            d["document_details"]["account_number"] = f"XXXXXXXX{digits[-4:]}"
+
                 # Strip processing_notes to safe summary
                 d.pop("processing_notes", None)
                 docs_by_type[dt] = d
@@ -2551,6 +2596,7 @@ def get_user_documents(current_user):
                 all_doc_types.append({
                     "id": None,
                     "doc_type": dt,
+                    "document_type": dt,
                     "display_label": label,
                     "original_filename": None,
                     "mime_type": None,
@@ -2558,6 +2604,7 @@ def get_user_documents(current_user):
                     "file_size_kb": 0,
                     "status": "Missing",
                     "extracted_data": {},
+                    "document_details": {},
                     "uploaded_at": None,
                     "updated_at": None
                 })
@@ -2654,6 +2701,7 @@ def upload_document(current_user):
         return api_response(True, f"Document '{VALID_DOC_TYPES[doc_type]}' uploaded and processed successfully.", {
             "doc_id": doc_id,
             "doc_type": doc_type,
+            "document_type": doc_type,
             "display_label": VALID_DOC_TYPES[doc_type],
             "original_filename": original_name,
             "file_size_kb": round(file_size / 1024, 1),
@@ -2726,6 +2774,288 @@ def delete_document(current_user, doc_id):
     except Exception as err:
         print(f"[API Error DELETE /api/documents/<id>]: {type(err).__name__}")
         return api_response(False, "Failed to delete document.", None, 500)
+
+
+
+@app.route("/api/documents/<int:doc_id>/details", methods=["PUT"])
+@token_required
+def update_document_details(current_user, doc_id):
+    """
+    Save or update structured details for an existing uploaded document.
+    Does not create duplicate records; updates the existing user_documents row.
+    Masks sensitive identifiers by default and strictly validates inputs.
+    """
+    try:
+        user_id = current_user["user_id"]
+        row = query_one(
+            "SELECT id, user_id, doc_type, status, document_details FROM user_documents WHERE id = %s AND is_active = TRUE",
+            (doc_id,)
+        )
+        if not row:
+            return api_response(False, "Document not found.", None, 404)
+        if row["user_id"] != user_id:
+            return api_response(False, "You are not authorized to edit this document.", None, 403)
+
+        payload = request.get_json(silent=True) or {}
+        details = payload.get("details") if ("details" in payload and isinstance(payload.get("details"), dict)) else payload
+
+        doc_type = row["doc_type"]
+        cleaned_details = {}
+
+        if doc_type == 'aadhaar':
+            an = str(details.get("aadhaar_number", "")).strip()
+            if an:
+                digits = re.sub(r'[\s\-]', '', an)
+                if an.startswith(('XXXX', 'xxxx', '****')) or ('X' in an.upper() and len(digits) == 4):
+                    cleaned_details["aadhaar_number"] = an
+                    cleaned_details["aadhaar_last4"] = digits[-4:]
+                elif not re.match(r'^\d{12}$', digits):
+                    return api_response(False, "Aadhaar number must be a valid 12-digit number.", None, 400)
+                else:
+                    cleaned_details["aadhaar_number"] = f"XXXX-XXXX-{digits[-4:]}"
+                    cleaned_details["aadhaar_last4"] = digits[-4:]
+
+            name = str(details.get("name") or details.get("full_name") or "").strip()
+            if name:
+                cleaned_details["name"] = name[:100]
+
+            dob = str(details.get("dob") or details.get("date_of_birth") or "").strip()
+            if dob:
+                cleaned_details["dob"] = dob[:30]
+
+        elif doc_type == 'income_certificate':
+            applicant = str(details.get("applicant_name") or details.get("name") or "").strip()
+            if applicant:
+                cleaned_details["applicant_name"] = applicant[:100]
+
+            cert_no = str(details.get("certificate_number", "")).strip()
+            if cert_no:
+                cleaned_details["certificate_number"] = cert_no[:60]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+            auth = str(details.get("issuing_authority", "")).strip()
+            if auth:
+                cleaned_details["issuing_authority"] = auth[:100]
+
+            if details.get("annual_income") is not None and str(details.get("annual_income")).strip():
+                try:
+                    inc_val = float(str(details.get("annual_income")).replace(',', '').strip())
+                    if inc_val >= 0:
+                        cleaned_details["annual_income"] = inc_val
+                except ValueError:
+                    pass
+
+        elif doc_type == 'caste_certificate':
+            applicant = str(details.get("applicant_name") or details.get("name") or "").strip()
+            if applicant:
+                cleaned_details["applicant_name"] = applicant[:100]
+
+            cert_no = str(details.get("certificate_number", "")).strip()
+            if cert_no:
+                cleaned_details["certificate_number"] = cert_no[:60]
+
+            cat = str(details.get("category", "")).strip()
+            if cat:
+                cleaned_details["category"] = cat[:50]
+
+            auth = str(details.get("issuing_authority", "")).strip()
+            if auth:
+                cleaned_details["issuing_authority"] = auth[:100]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+        elif doc_type == 'domicile_certificate':
+            applicant = str(details.get("applicant_name") or details.get("name") or "").strip()
+            if applicant:
+                cleaned_details["applicant_name"] = applicant[:100]
+
+            cert_no = str(details.get("certificate_number", "")).strip()
+            if cert_no:
+                cleaned_details["certificate_number"] = cert_no[:60]
+
+            state = str(details.get("state", "")).strip()
+            if state:
+                cleaned_details["state"] = state[:60]
+
+            district = str(details.get("district", "")).strip()
+            if district:
+                cleaned_details["district"] = district[:60]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+            auth = str(details.get("issuing_authority", "")).strip()
+            if auth:
+                cleaned_details["issuing_authority"] = auth[:100]
+
+        elif doc_type == 'bank_passbook':
+            holder = str(details.get("account_holder_name", "")).strip()
+            if holder:
+                cleaned_details["account_holder_name"] = holder[:100]
+
+            bank = str(details.get("bank_name", "")).strip()
+            if bank:
+                cleaned_details["bank_name"] = bank[:100]
+
+            ifsc = str(details.get("ifsc_code", "")).strip().upper()
+            if ifsc:
+                if not re.match(r'^[A-Z]{4}0[A-Z0-9]{6}$', ifsc):
+                    return api_response(False, "Invalid IFSC code format (e.g. SBIN0001234).", None, 400)
+                cleaned_details["ifsc_code"] = ifsc
+
+            acc = str(details.get("account_number", "")).strip()
+            if acc:
+                digits = re.sub(r'[\s\-]', '', acc)
+                if acc.startswith(('XXXX', 'xxxx', '****')) or ('X' in acc.upper() and len(digits) == 4):
+                    cleaned_details["account_number"] = acc
+                    cleaned_details["account_last4"] = digits[-4:]
+                elif not re.match(r'^\d{9,18}$', digits):
+                    return api_response(False, "Bank account number must be between 9 and 18 digits.", None, 400)
+                else:
+                    cleaned_details["account_number"] = f"XXXXXXXX{digits[-4:]}"
+                    cleaned_details["account_last4"] = digits[-4:]
+
+        elif doc_type in ('marksheet_10th', 'marksheet_12th', 'student_bonafide'):
+            student = str(details.get("student_name") or details.get("name") or "").strip()
+            if student:
+                cleaned_details["student_name"] = student[:100]
+
+            roll = str(details.get("roll_number", "")).strip()
+            if roll:
+                cleaned_details["roll_number"] = roll[:50]
+
+            board = str(details.get("board_university") or details.get("board") or "").strip()
+            if board:
+                cleaned_details["board_university"] = board[:100]
+
+            year = str(details.get("passing_year", "")).strip()
+            if year:
+                cleaned_details["passing_year"] = year[:20]
+
+            marks = str(details.get("marks_percentage", "")).strip()
+            if marks:
+                cleaned_details["marks_percentage"] = marks[:20]
+
+            cert_no = str(details.get("certificate_number", "")).strip()
+            if cert_no:
+                cleaned_details["certificate_number"] = cert_no[:60]
+
+        elif doc_type == 'disability_certificate':
+            applicant = str(details.get("applicant_name") or details.get("name") or "").strip()
+            if applicant:
+                cleaned_details["applicant_name"] = applicant[:100]
+
+            dis_type = str(details.get("disability_type", "")).strip()
+            if dis_type:
+                cleaned_details["disability_type"] = dis_type[:60]
+
+            dis_pct = str(details.get("disability_percentage", "")).strip()
+            if dis_pct:
+                cleaned_details["disability_percentage"] = dis_pct[:20]
+
+            cert_no = str(details.get("certificate_number", "")).strip()
+            if cert_no:
+                cleaned_details["certificate_number"] = cert_no[:60]
+
+            auth = str(details.get("issuing_authority", "")).strip()
+            if auth:
+                cleaned_details["issuing_authority"] = auth[:100]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+        elif doc_type in ('ration_card', 'bpl_ews_certificate'):
+            head = str(details.get("head_of_family") or details.get("name") or "").strip()
+            if head:
+                cleaned_details["head_of_family"] = head[:100]
+
+            card_no = str(details.get("card_number") or details.get("certificate_number") or "").strip()
+            if card_no:
+                cleaned_details["card_number"] = card_no[:60]
+
+            cat = str(details.get("card_category") or details.get("category") or "").strip()
+            if cat:
+                cleaned_details["card_category"] = cat[:50]
+
+            members = str(details.get("family_members_count", "")).strip()
+            if members:
+                cleaned_details["family_members_count"] = members[:10]
+
+            auth = str(details.get("issuing_authority", "")).strip()
+            if auth:
+                cleaned_details["issuing_authority"] = auth[:100]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+        elif doc_type == 'land_records':
+            owner = str(details.get("owner_name") or details.get("name") or "").strip()
+            if owner:
+                cleaned_details["owner_name"] = owner[:100]
+
+            khasra = str(details.get("khasra_number") or details.get("certificate_number") or "").strip()
+            if khasra:
+                cleaned_details["khasra_number"] = khasra[:60]
+
+            area = str(details.get("land_area", "")).strip()
+            if area:
+                cleaned_details["land_area"] = area[:50]
+
+            dist = str(details.get("district", "")).strip()
+            if dist:
+                cleaned_details["district"] = dist[:60]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+        else:
+            doc_name = str(details.get("document_name", "")).strip()
+            if doc_name:
+                cleaned_details["document_name"] = doc_name[:120]
+
+            holder = str(details.get("holder_name") or details.get("name") or details.get("applicant_name") or "").strip()
+            if holder:
+                cleaned_details["holder_name"] = holder[:100]
+
+            ref_no = str(details.get("reference_number") or details.get("certificate_number") or "").strip()
+            if ref_no:
+                cleaned_details["reference_number"] = ref_no[:60]
+
+            auth = str(details.get("issuing_authority", "")).strip()
+            if auth:
+                cleaned_details["issuing_authority"] = auth[:100]
+
+            issue_date = str(details.get("issue_date", "")).strip()
+            if issue_date:
+                cleaned_details["issue_date"] = issue_date[:30]
+
+            notes = str(details.get("notes", "")).strip()
+            if notes:
+                cleaned_details["notes"] = notes[:500]
+
+        # Update in database without creating duplicates
+        execute_db(
+            "UPDATE user_documents SET document_details = %s WHERE id = %s",
+            (json.dumps(cleaned_details), doc_id)
+        )
+
+        return api_response(True, "Document details updated successfully.", {
+            "doc_id": doc_id,
+            "document_details": cleaned_details
+        })
+
+    except Exception as err:
+        print(f"[API Error PUT /api/documents/<id>/details]: {type(err).__name__}")
+        return api_response(False, "Failed to update document details.", None, 500)
 
 
 @app.route("/api/documents/<int:doc_id>/reprocess", methods=["POST"])

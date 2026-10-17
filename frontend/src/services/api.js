@@ -314,6 +314,25 @@ export async function reprocessDocument(docId, token) {
   return handleResponse(response);
 }
 
+/**
+ * Update structured details for an uploaded document.
+ * @param {number} docId - Document ID
+ * @param {object} details - Key-value details object
+ * @param {string} token - Auth token
+ */
+export async function updateDocumentDetails(docId, details, token) {
+  const url = `${API_BASE_URL}/documents/${docId}/details`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ details })
+  });
+  return handleResponse(response);
+}
+
 // ==========================================
 // Application Workflow API
 // ==========================================

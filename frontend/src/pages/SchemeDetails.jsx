@@ -12,12 +12,12 @@ import {
 
 export default function SchemeDetails() {
   const { id } = useParams();
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, isSchemeSaved, saveSchemeAction, removeSchemeAction } = useAuth();
   const navigate = useNavigate();
   const [scheme, setScheme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isSaved, setIsSaved] = useState(false);
+  const isSaved = scheme ? isSchemeSaved(scheme.id) : false;
   const [saveLoading, setSaveLoading] = useState(false);
   const [savePopup, setSavePopup] = useState(null); // { type, title, message }
 
@@ -41,20 +41,7 @@ export default function SchemeDetails() {
         if (res.success && res.data) {
           setScheme(res.data);
 
-          const token = localStorage.getItem('civic_portal_token');
-          if (token) {
-            try {
-              const savedRes = await fetchSavedSchemes(token);
-              if (savedRes.success && Array.isArray(savedRes.data)) {
-                const alreadySaved = savedRes.data.some(
-                  (savedScheme) => Number(savedScheme.id) === Number(res.data.id)
-                );
-                setIsSaved(alreadySaved);
-              }
-            } catch (savedErr) {
-              console.error('Failed to check saved scheme status:', savedErr);
-            }
-          }
+
         } else {
           setError(res.message || 'Scheme not found');
         }
@@ -69,9 +56,7 @@ export default function SchemeDetails() {
   }, [id]);
 
   async function handleSaveToggle() {
-    const token = localStorage.getItem('civic_portal_token');
-
-    if (!token) {
+    if (!isAuthenticated || !token) {
       showSavePopup('info', 'Login Required', 'Please login to save schemes to your profile.');
       return;
     }
@@ -80,17 +65,15 @@ export default function SchemeDetails() {
       setSaveLoading(true);
 
       if (isSaved) {
-        const res = await removeSavedScheme(scheme.id, token);
+        const res = await removeSchemeAction(scheme.id);
         if (res.success) {
-          setIsSaved(false);
           showSavePopup('info', 'Scheme Removed', 'This scheme has been removed from your Saved Schemes.');
         } else {
           showSavePopup('error', 'Unable to Remove', res.message || 'Unable to remove scheme. Please try again.');
         }
       } else {
-        const res = await saveScheme(scheme.id, token);
+        const res = await saveSchemeAction(scheme.id);
         if (res.success) {
-          setIsSaved(true);
           showSavePopup('success', '✓ Scheme Saved Successfully!', 'This scheme has been added to your Saved Schemes.');
         } else {
           showSavePopup('error', 'Unable to Save Scheme', res.message || 'Unable to save scheme. Please try again.');
@@ -100,7 +83,6 @@ export default function SchemeDetails() {
       console.error('Failed to update saved scheme:', err);
       const msg = err.message || '';
       if (msg.toLowerCase().includes('already')) {
-        setIsSaved(true);
         showSavePopup('info', 'Scheme Already Saved', 'This scheme is already present in your saved schemes.');
       } else {
         showSavePopup('error', 'Unable to Save Scheme', msg || 'Unable to save scheme. Please try again.');
@@ -559,9 +541,9 @@ export default function SchemeDetails() {
             className={`btn-action-save-scheme ${isSaved ? 'saved' : ''}`}
           >
             {saveLoading
-              ? 'Saving...'
+              ? 'Updating...'
               : isSaved
-                ? '✓ Saved Scheme'
+                ? '✓ Remove Scheme'
                 : '☆ Save Scheme'}
           </button>
 

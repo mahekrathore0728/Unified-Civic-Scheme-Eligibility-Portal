@@ -1,7 +1,37 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+﻿import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function SchemeCard({ scheme, customReason = null, isEligible = null }) {
+  const { isSchemeSaved, saveSchemeAction, removeSchemeAction, isAuthenticated } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate();
+
+  const isSaved = isSchemeSaved ? isSchemeSaved(scheme.id) : false;
+
+  const handleToggleSave = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: `/schemes/${scheme.id}` } } });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      if (isSaved) {
+        await removeSchemeAction(scheme.id);
+      } else {
+        await saveSchemeAction(scheme.id);
+      }
+    } catch (err) {
+      console.error('Failed to toggle saved scheme:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Determine category badge color class
   const getCategoryClass = (category) => {
     switch (category?.toLowerCase()) {
@@ -10,6 +40,7 @@ export default function SchemeCard({ scheme, customReason = null, isEligible = n
       case 'employment':
         return 'cat-badge-green';
       case 'healthcare':
+      case 'health':
         return 'cat-badge-red';
       case 'agriculture':
         return 'cat-badge-emerald';
@@ -17,6 +48,8 @@ export default function SchemeCard({ scheme, customReason = null, isEligible = n
         return 'cat-badge-cyan';
       case 'women & child':
         return 'cat-badge-purple';
+      case 'social welfare':
+        return 'cat-badge-teal';
       default:
         return 'cat-badge-default';
     }
@@ -25,12 +58,11 @@ export default function SchemeCard({ scheme, customReason = null, isEligible = n
   // Helper for key benefit text
   const getKeyBenefit = () => {
     if (scheme.benefits) {
-      // If benefits is long, pick the first sentence or up to 60 characters
       const firstSentence = scheme.benefits.split('.')[0];
       return firstSentence.length > 70 ? firstSentence.slice(0, 67) + '...' : firstSentence;
     }
     if (scheme.income_limit) {
-      return `Financial support for families with income up to ₹${scheme.income_limit.toLocaleString('en-IN')}`;
+      return `Financial support for families with income up to ₹${Number(scheme.income_limit).toLocaleString('en-IN')}`;
     }
     return 'Financial and welfare assistance as notified by the government';
   };
@@ -90,11 +122,28 @@ export default function SchemeCard({ scheme, customReason = null, isEligible = n
         </div>
       </div>
 
-      {/* Footer Link */}
+      {/* Footer Link & Save Toggle Action */}
       <div className="card-footer-action">
         <Link to={`/schemes/${scheme.id}`} className="card-view-details-link">
           View details &rarr;
         </Link>
+
+        <button
+          type="button"
+          onClick={handleToggleSave}
+          disabled={isSaving}
+          className={`card-btn-save ${isSaved ? 'saved' : ''}`}
+          title={isSaved ? "Remove Scheme from saved bookmarks" : "Save Scheme to bookmarks"}
+          aria-label={isSaved ? `Remove ${scheme.name} from saved` : `Save ${scheme.name}`}
+        >
+          {isSaving ? (
+            'Updating...'
+          ) : isSaved ? (
+            '✓ Remove Scheme'
+          ) : (
+            '☆ Save Scheme'
+          )}
+        </button>
       </div>
     </article>
   );

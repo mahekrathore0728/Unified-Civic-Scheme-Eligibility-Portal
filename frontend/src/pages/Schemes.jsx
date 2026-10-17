@@ -18,16 +18,18 @@ const CATEGORY_PILLS = [
   'All',
   'Education',
   'Agriculture',
-  'Healthcare',
+  'Health',
   'Housing',
   'Employment',
-  'Women & Child'
+  'Women & Child',
+  'Social Welfare'
 ];
 
 export default function Schemes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get('q') || '';
-  const initialCategory = searchParams.get('category') || 'All';
+  const rawCategory = searchParams.get('category') || 'All';
+  const initialCategory = rawCategory.toLowerCase() === 'healthcare' ? 'Health' : rawCategory;
   const initialState = searchParams.get('state') || 'All';
 
   const [schemes, setSchemes] = useState([]);
@@ -42,7 +44,8 @@ export default function Schemes() {
   // Sync state if URL search params change
   useEffect(() => {
     const qParam = searchParams.get('q') || '';
-    const catParam = searchParams.get('category') || 'All';
+    const rawCat = searchParams.get('category') || 'All';
+    const catParam = rawCat.toLowerCase() === 'healthcare' ? 'Health' : rawCat;
     const stateParam = searchParams.get('state') || 'All';
 
     setSearchTerm(qParam);

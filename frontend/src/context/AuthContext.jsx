@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { logoutUser } from '../services/api';
+﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { logoutUser, fetchSavedSchemes, saveScheme, removeSavedScheme } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -20,7 +20,36 @@ export function AuthProvider({ children }) {
     return localStorage.getItem(TOKEN_STORAGE_KEY) || null;
   });
 
+  const [savedSchemeIds, setSavedSchemeIds] = useState([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+
   const isAuthenticated = Boolean(user && token);
+
+  const loadSavedSchemeIds = useCallback(async (authToken) => {
+    if (!authToken) {
+      setSavedSchemeIds([]);
+      return;
+    }
+    try {
+      setSavedLoading(true);
+      const res = await fetchSavedSchemes(authToken);
+      if (res && res.success && Array.isArray(res.data)) {
+        setSavedSchemeIds(res.data.map(s => Number(s.id)));
+      }
+    } catch (err) {
+      console.warn('Could not load saved schemes in AuthProvider:', err);
+    } finally {
+      setSavedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      loadSavedSchemeIds(token);
+    } else {
+      setSavedSchemeIds([]);
+    }
+  }, [token, loadSavedSchemeIds]);
 
   const login = (userData, userToken) => {
     setUser(userData);
@@ -31,6 +60,7 @@ export function AuthProvider({ children }) {
     } catch (e) {
       console.warn('Could not persist auth to localStorage:', e);
     }
+    loadSavedSchemeIds(userToken);
   };
 
   const logout = async () => {
@@ -38,12 +68,12 @@ export function AuthProvider({ children }) {
       try {
         await logoutUser(token);
       } catch (err) {
-        // Continue clearing client state regardless of server response
         console.warn('Server logout error:', err);
       }
     }
     setUser(null);
     setToken(null);
+    setSavedSchemeIds([]);
     try {
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -64,8 +94,52 @@ export function AuthProvider({ children }) {
     });
   };
 
+  const isSchemeSaved = useCallback((schemeId) => {
+    if (!schemeId) return false;
+    return savedSchemeIds.includes(Number(schemeId));
+  }, [savedSchemeIds]);
+
+  const saveSchemeAction = async (schemeId) => {
+    if (!token) throw new Error('Authentication required');
+    const res = await saveScheme(schemeId, token);
+    if (res.success) {
+      setSavedSchemeIds(prev => Array.from(new Set([...prev, Number(schemeId)])));
+    }
+    return res;
+  };
+
+  const removeSchemeAction = async (schemeId) => {
+    if (!token) throw new Error('Authentication required');
+    const res = await removeSavedScheme(schemeId, token);
+    if (res.success) {
+      setSavedSchemeIds(prev => prev.filter(id => id !== Number(schemeId)));
+    }
+    return res;
+  };
+
+  const refreshSavedSchemes = () => {
+    if (token) {
+      return loadSavedSchemeIds(token);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isAuthenticated,
+        login,
+        logout,
+        updateUser,
+        savedSchemeIds,
+        savedLoading,
+        isSchemeSaved,
+        saveSchemeAction,
+        removeSchemeAction,
+        refreshSavedSchemes
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

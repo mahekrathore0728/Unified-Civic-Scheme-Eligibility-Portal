@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  fetchSavedSchemes,
-  removeSavedScheme
-} from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { fetchSavedSchemes } from '../services/api';
 
 export default function SavedSchemes() {
+  const { token, isAuthenticated, removeSchemeAction } = useAuth();
   const [savedSchemes, setSavedSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -13,9 +12,6 @@ export default function SavedSchemes() {
 
   useEffect(() => {
     async function loadSavedSchemes() {
-      const token = localStorage.getItem('civic_portal_token');
-      
-
       if (!token) {
         setError('Please login to view your saved schemes.');
         setLoading(false);
@@ -42,11 +38,9 @@ export default function SavedSchemes() {
     }
 
     loadSavedSchemes();
-  }, []);
+  }, [token]);
 
   async function handleRemove(schemeId) {
-    const token = localStorage.getItem('civic_portal_token');
-
     if (!token) {
       setError('Please login to manage saved schemes.');
       return;
@@ -56,7 +50,7 @@ export default function SavedSchemes() {
       setRemovingId(schemeId);
       setError('');
 
-      const res = await removeSavedScheme(schemeId, token);
+      const res = await removeSchemeAction(schemeId);
 
       if (res.success) {
         setSavedSchemes((currentSchemes) =>
@@ -77,19 +71,9 @@ export default function SavedSchemes() {
 
   if (loading) {
     return (
-      <div
-        className="civic-loader-container"
-        style={{ padding: '60px 0' }}
-      >
-        <div
-          className="civic-spinner"
-          role="status"
-          aria-label="Loading saved schemes"
-        ></div>
-
-        <p className="civic-loader-text">
-          Loading your saved schemes...
-        </p>
+      <div className="civic-loader-container" style={{ padding: '60px 0' }}>
+        <div className="civic-spinner" role="status" aria-label="Loading saved schemes"></div>
+        <p className="civic-loader-text">Loading your saved schemes...</p>
       </div>
     );
   }
@@ -115,20 +99,14 @@ export default function SavedSchemes() {
       {!error && savedSchemes.length === 0 && (
         <div className="empty-schemes-notice">
           <h3 className="empty-title">No Saved Schemes Yet</h3>
-
           <p className="empty-desc">
             You have not bookmarked any government schemes yet.
-            Browse the scheme catalog and save schemes you want to
-            review later.
+            Browse the scheme catalog and save schemes you want to review later.
           </p>
-
           <Link
             to="/schemes"
             className="btn-filter-reset"
-            style={{
-              display: 'inline-block',
-              marginTop: '16px'
-            }}
+            style={{ display: 'inline-block', marginTop: '16px' }}
           >
             Browse Schemes
           </Link>
@@ -138,15 +116,11 @@ export default function SavedSchemes() {
       {!error && savedSchemes.length > 0 && (
         <div className="schemes-grid">
           {savedSchemes.map((scheme) => (
-            <article
-              key={scheme.id}
-              className="scheme-card"
-            >
+            <article key={scheme.id} className="scheme-card">
               <div className="scheme-card-header">
                 <span className="scheme-category-pill cat-badge-blue">
                   {scheme.category}
                 </span>
-
                 <span className="scheme-category-pill cat-badge-green">
                   {scheme.status || 'Active'}
                 </span>
@@ -166,7 +140,6 @@ export default function SavedSchemes() {
                     ? 'Pan-India'
                     : scheme.state_requirement || 'All States'}
                 </span>
-
                 <span>
                   {scheme.deadline || 'Ongoing / Open'}
                 </span>
@@ -185,10 +158,11 @@ export default function SavedSchemes() {
                   onClick={() => handleRemove(scheme.id)}
                   disabled={removingId === scheme.id}
                   className="btn-action-browse-more"
+                  title="Remove from saved schemes"
                 >
                   {removingId === scheme.id
                     ? 'Removing...'
-                    : 'Remove Saved'}
+                    : 'Remove Scheme'}
                 </button>
               </div>
             </article>
